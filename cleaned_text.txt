@@ -1,0 +1,1680 @@
+MNRAS 000, 1–27 (2024) Preprint 22 November 2024 Compiled using MNRAS L ATEX style file v3.0
+Learning the Universe: Cosmological and Astrophysical Parameter
+Inference with Galaxy Luminosity Functions and Colours
+Christopher C. Lovell,1★Tjitske Starkenburg2,3,4, Matthew Ho,5Daniel Anglés-Alcázar,6
+Romeel Davé,7,8,9Austen Gabrielpillai,10Kartheik G. Iyer,5Alice E. Matthews,11William J. Roper,12
+Rachel S. Somerville,13Laura Sommovigo,13Francisco Villaescusa-Navarro13,14
+1Institute of Cosmology and Gravitation, University of Portsmouth, Burnaby Road, Portsmouth, PO1 3FX, UK
+2Center for Interdisciplinary Exploration and Research in Astrophysics (CIERA), Northwestern University, 1800 Sherman Ave, Evanston IL 60201, USA
+3Department of Physics and Astronomy, Northwestern University, 2145 Sheridan Rd, Evanston IL 60208, USA
+4NSF-Simons AI Institute for the Sky (SkAI), 172 E. Chestnut St., Chicago, IL 60611, USA
+5Columbia Astrophysics Laboratory, Columbia University, 550 West 120th Street, New York, NY 10027, USA
+6Department of Physics, University of Connecticut, 196 Auditorium Road, U-3046, Storrs, CT 06269-3046, USA
+7Institute for Astronomy, Royal Observatory, University of Edinburgh, Edinburgh EH9 3HJ, UK
+8University of the Western Cape, Department of Physics and Astronomy, Bellville, Cape Town 7535, South Africa
+9South African Astronomical Observatories, Observatory, Cape Town 7925, South Africa
+10Department of Astrophysics, The Graduate Center, City University of New York, 365 5th Ave, New York, NY 10016, USA
+11Mullard Space Science Laboratory, University College London, Holmbury St Mary, Dorking, Surrey, RH5 6NT, UK
+12Astronomy Centre, University of Sussex, Falmer, Brighton BN1 9QH, UK
+13Center for Computational Astrophysics, Flatiron Institute, 162 Fifth Avenue, New York, NY, 10010, USA
+14Departent of Astrophysical Sciences, Princeton University, Princeton NJ 08544, USA
+Accepted XXX. Received YYY; in original form ZZZ
+ABSTRACT
+We perform the first direct cosmological and astrophysical parameter inference from the combination of galaxy luminosity
+functionsandcoloursusingasimulationbasedinferenceapproach.Usingthe Synthesizer codewesimulatethedustattenuated
+ultraviolet–near infrared stellar emission from galaxies in thousands of cosmological hydrodynamic simulations from the
+CAMELS suite, including the Swift-EAGLE ,Illustris-TNG ,Simba&Astridgalaxy formation models. For each galaxy we
+calculate the rest-frame luminosity in a number of photometric bands, including the SDSS ugrizand GALEX FUV & NUV
+filters;thisdatasetrepresentsthelargestcatalogueofsyntheticphotometrybasedonhydrodynamicgalaxyformationsimulations
+produced to date, totalling >200 million sources. From these we compile luminosity functions and colour distributions, and
+find clear dependencies on both cosmology and feedback. We then perform simulation based (likelihood-free) inference using
+these distributions, and obtain constraints on both cosmological and astrophysical parameters. Both colour distributions and
+luminosity functions provide complementary information on certain parameters when performing inference. Most interestingly
+weachieveconstraintson 𝜎8,describingtheclusteringofmatter.Thisisattributabletothefactthatthephotometryencodesthe
+star formation–metal enrichment history of each galaxy; galaxies in a universe with a higher 𝜎8tend to form earlier and have
+highermetallicities,whichleadstoreddercolours.Wefindthatamodeltrainedononegalaxyformationsimulationgeneralises
+poorlywhenappliedtoanother,andattributethistodifferencesinthesubgridprescriptions,andlackofflexibilityinouremission
+modelling. The photometric catalogues are publicly available at: https://camels.readthedocs.io/ .
+Key words: galaxies: abundances – galaxies: photometry – cosmology: cosmological parameters
+1 INTRODUCTION
+Machine learning methods, particularly deep learning algorithms,
+are now capable of learning both deterministic and probabilistic re-
+lationships with a high degree of flexibility, and have achieved wide
+use within the fields of cosmology and astrophysics (Carleo et al.
+2019;?; Smith & Geach 2023). One particularly powerful applica-
+★E-mail: christopher.lovell@port.ac.uk (CCL)tionofthesemethodsisinBayesianinference,whereinoneestimates
+theparametersofamodelgivensomeassumedpriorhypothesisand
+observed data ( e.g.Christensen et al. 2001). This combination of
+machine learning and Bayesian inference is known as Simulation
+Based Inference (SBI, also called implicit likelihood inference, or
+likelihood-freeinference;seeMarinetal.2012;Cranmeretal.2020),
+a rigorous Bayesian approach to learning the relationship between
+simulated data ( X) and the underlying parameters used to generate
+it (𝜃), typically leveraging flexible neural density estimators (NDEs,
+©2024 The AuthorsarXiv:2411.13960v1 [astro-ph.GA] 21 Nov 20242 C. C. Lovell et al.
+e.g. Durkan et al. 2019). In contrast with traditional Bayesian meth-
+ods,ananalyticformofthelikelihooddoesnotneedtobeprovided;
+instead, an SBI approach directly learns the form of the likelihood.
+This provides many advantages, particularly in instances where the
+likelihoodisnon-Gaussian(suchaswhensystematicsareconsidered;
+Jeffrey et al. 2021), or intractable (such as in field–level inference;
+Leclercq & Heavens 2021; Lemos et al. 2023). They also permit
+amortizedinference,wherebythefullposteriorcanbeevaluatedand
+sampledrapidlyatthepointofinference,reducingthecomputational
+cost;thisopensupnewavenuesforBayesianparameterinferenceon
+extremely large datasets (Ho et al. 2024).
+A number of studies have used SBI to perform cosmological pa-
+rameter inference. These exploit simulations that explicitly model
+the relationship between cosmological parameters and observable
+statistics, such as the cosmic microwave background power spec-
+trum(e.g.Lemosetal.2023),orclusteringstatisticsinthepresence
+of weak-lensing effects (e.g. von Wietersheim-Kramsta et al. 2024).
+Thesesimulationscoverawiderangeofsophistication,fromanalyt-
+ical descriptions of the distribution of halo properties (Mead et al.
+2021; Tessore et al. 2023) to full 𝑁-body simulations of the large
+scalestructure(Villaescusa-Navarroetal.2020).Analyticorempir-
+ical models are often then applied to map galaxies or observational
+tracerstotheunderlyingmatterdensity.However,thesesimplemod-
+els relating dark matter properties to observational tracers are often
+inadequate (Hadzhiyska et al. 2020), and at small scales astrophys-
+ical effects, such as energetic feedback from active galactic nuclei
+(AGN)andstarformation,canimpacttheoverallmatterdistribution
+(Anglés-Alcázaretal.2017;Borrowetal.2020;Delgadoetal.2023;
+Tillmanetal.2023;Gebhardtetal.2024),requiringmodificationsto
+𝑁-body predictions (Bose et al. 2021; Carrilho et al. 2022; Schaller
+etal.2024a).Toovercometheselimitationsrequiressimulatingthese
+processes explicitly.
+State-of-the-arthydrodynamicsimulationsarenowcapableofpro-
+ducing realistic galaxy samples in large volumes that match a num-
+berofkeydistributionfunctionsinthelocalUniverse(Somerville&
+Davé 2015; Vogelsberger et al. 2020; Crain & van de Voort 2023).
+Thesesimulationsself-consistentlymodeltheevolutionofcollision-
+less dark matter as well as baryons down to some resolution limit,
+beyond which subgrid models are used to approximate the impact
+of sub-resolution physical processes on the macro-scale properties
+of galaxies. Such simulations can be used in an SBI framework not
+onlytounderstandtheimpactofbaryonsandastrophysicalprocesses
+on cosmological parameter inference, but also to perform inference
+directly on astrophysical parameters of interest. However, hydrody-
+namicsimulationsareexceedinglycomputationallyexpensive,limit-
+ingthevolume,resolutionand/orphysicalfidelityofthesimulations
+thatcanberun.Beyondthechallengesinherentinrunningthesimu-
+lations,theyarealsocomputationallychallengingforuseinSBIdue
+to the range of parameters that can be varied, and the large volume
+of data products that must be computed and stored.
+Despitetheseobstaclestherehasbeenrecentprogressinproducing
+hydrodynamicsimulationsuitesthatareamenabletoSBIapproaches.
+The Cosmology and Astrophysics with MachinE-Learning Simula-
+tions (CAMELS; Villaescusa-Navarro et al. 2021b) project brought
+together a number of hydrodynamic and semi-analytic galaxy for-
+mation models, each consisting of large suites of simulations vary-
+ing both cosmological and astrophysical paramaters that have been
+usedinanSBIframeworkforparameterinference( e.g.Villaescusa-
+Navarro et al. 2021a, 2022; Nicola et al. 2022; Hassan et al. 2022;
+Friedman&Hassan2022;Thieleetal.2022;Villanueva-Domingo&
+Villaescusa-Navarro 2022; Shao et al. 2022; de Santi et al. 2023b,a;
+Perez et al. 2023; Jo et al. 2023; Echeverri-Rojas et al. 2023).The majority of these studies have performed inference on intrin-
+sic properties of galaxies (or physical fields). However, in order to
+make a like-for-like comparison with observations we must forward
+model theelectromagnetic emission fromgalaxies, andcompare di-
+rectlyinthisobserverspace(Fortunietal.2023).Thereareanumber
+of approaches for achieving this, but almost all start by modelling
+the stellar emission using stellar population synthesis (SPS) models
+(Conroy 2013) coupled to the star formation and metal enrichment
+history of each simulated galaxy. Many also account for line and
+continuumemissionfromyoungnebularregions,utilisingphotoion-
+isation codes such as Mappings andCloudy(Dopita & Sutherland
+1996;Chatzikosetal.2023).Oneofthemostimportantgalaxycom-
+ponentsthathasanoutsizedimpactontheobservedspectralenbergy
+distribution (SED) is cosmic dust, which leads to attenuation in the
+UV–optical, and thermal emission in the infrared (Calzetti 2001;
+Draine 2003). There are a number of methods for modelling this
+attenuation and emission, from simple analytic models (Charlot &
+Fall 2000) to full dust radiative transfer approaches (Camps & Baes
+2015; Narayanan et al. 2021).
+Itisclearfromthesevariousingredientsintheforwardmodelthat
+manydegeneraciescanbeintroduced.Forexample,thechoiceofSPS
+model can have a large impact on the predicted intrinsic emission,
+particularly if the impact of binaries is taken into account (Wilkins
+etal.2016;Stanwayetal.2016;Eldridgeetal.2017;Tortorellietal.
+2024;Bellstedt&Robotham2024).Photoionisationmodellingintro-
+ducesalargenumberofadditionalparameters,suchasthehydrogen
+densityoftheincidentcloud,thevalueoftheassumedionisationpa-
+rameter,aswellasthechemicalabundancesofthecloudandsource
+(Byleretal.2017;Wilkinsetal.2020).Thedustattenuationlawcan
+alsotakeanumberofforms,dependentonthegrainsizedistribution
+andcomposition(Steinackeretal.2013),anddependontheintrinsic
+properties of galaxies in various ways (Salim & Narayanan 2020;
+Trayford et al. 2020; Hahn et al. 2022), such as by scaling the over-
+all attenuation by the mass and metallicity of star forming gas (see
+Trayfordetal.2015;Lovelletal.2019;Vĳayanetal.2021;Pallottini
+etal.2022).Despitethisflexibilityintheforwardmodel,achievinga
+match to observations has still proven exceedingly difficult. Optical
+luminosity functions, well constrained observationally in the local
+(𝑧∼0.1) Universe, have been reproduced with varying success, and
+accurate colour distributions have proven to be even more elusive;
+achieving the right balance of blue (star-forming) to red (passive,
+dustobscured)galaxiesisacomplexchallenge(Trayfordetal.2015,
+2017; Nelson et al. 2018; Lagos et al. 2019; Donnari et al. 2019;
+Bravoetal.2020;Dickeyetal.2021;Trčkaetal.2022;Gebeketal.
+2024).
+Despite these difficulties, a few recent works have forward mod-
+elled observed galaxy properties from hydrodynamic simulations
+and used these within an SBI framework. Recently, Choustikov
+et al. (2024) forward modelled JWST NIRCam photometry from
+the Sphinx simulations to estimate the ionising emissivity of high-
+redshiftgalaxies.Ofparticularrelevanceforthisstudyistheworkof
+Hahnetal.(2024),whoshowedhowcompetitivecosmologicalcon-
+straints can be achieved using galaxy photometry alone calculated
+from the Illustris-TNG suite of CAMELS; they combined the poste-
+riorsfromindividualgalaxiestoachievetighterconstraints,comple-
+menting the work of Villaescusa-Navarro et al. (2022) &Echeverri-
+Rojas et al. (2023); Chawak et al. (2024) that performed parameter
+inference on single galaxies. Inference on other forward modelled
+properties from CAMELS, such as diffuse gas emission and ab-
+sorption,hasalsobeendemonstrated( ?ButlerContrerasetal.2023;
+Tillman et al. 2023).
+In this paper we present the first simultaneous constraints of cos-
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 3
+mological and astrophysical parameters using observable galaxy
+distribution functions, forward modelled from the CAMELS sim-
+ulation suite. All photometric catalogues are made publicly avail-
+able at https://camels.readthedocs.io/en/latest/data_
+access.html for the community to use. This paper is released as
+partoftheLearningtheUniversecollaboration,1whichseekstolearn
+thecosmologicalparametersandinitialconditionsoftheUniverseby
+leveragingBayesianforwardmodellingapproaches.Thehopeisthat
+by better understanding the link between cosmology, astrophysics,
+and forward modelled observables, we can build better models for
+performingthiskindofinference.Thepaperisarrangedasfollows.In
+Section 2 we describe the CAMELS simulations, including details
+on the simulation sets used in this analysis. We describe our for-
+wardmodelforpredictinggalaxyemissionandextractingrest-frame
+photometry in Section 3. In Section 4 we explore the distribution
+functions from the various CAMELS suites, and the impact of the
+cosmological and astrophysical parameters. We present our results
+in Section 5, as well as introducing the Learning the Universe Im-
+plicitLikelihoodInference(LtU-ILI)frameworkforSBI.Wediscuss
+our results in Section 6 as well as the difficulties of performing SBI
+directly on observed relations. We summarise our conclusions in
+Section 7.
+2 THE CAMELS SIMULATIONS
+The Cosmology and Astrophysics with MachinE Learning Simula-
+tionsproject(CAMELS;Villaescusa-Navarroetal.2021b)isasuite
+ofover14000cosmologicalhydrodynamicand 𝑁-bodysimulations,
+designed to explore the effect of cosmological and astrophysical
+parameter choices on structure formation and galaxy evolution, par-
+ticularly through their use within machine learning frameworks. In
+thisprojectweusethehydrodynamicsimulationsfromfourdifferent
+codes:
+(i)Simba(Davé et al. 2019), run with the Gizmocode (Hopkins
+2015).
+(ii)IllustrisTNG (Pillepichetal.2018;Weinbergeretal.2018),
+run with the Arepocode (Springel 2010; Weinberger et al. 2019).
+(iii)Astrid(Bird et al. 2022; Ni et al. 2022), run with the MP-
+Gadgetcode. The addition of Astrid to the CAMELS suite is de-
+scribed in (Ni et al. 2023), including details of modifications com-
+pared to the fiducial Astrid model.
+(iv)Swift-EAGLE (Schayeetal.2015;Crainetal.2015),runwith
+theSwiftcode (Schaller et al. 2024b) using the Sphenixsmoothed
+particle hydrodynamics implementation (Borrow et al. 2022). The
+additionofSwift-EAGLEtotheCAMELSsuiteisdescribedinLovell
+et al. in prep..
+Thesemodelsrepresentacombinationofdifferentsubgridmodels
+for gas cooling, chemical enrichment, star formation, stellar feed-
+back, black hole assembly and AGN feedback. There are also dif-
+ferences in the underlying hydrodynamics solvers; Arepoimple-
+ments an unstructured Voronoi tesselation, Gizmouses a meshless
+finite-mass method, and MP-Gadget andSwiftutilise Smoothed
+Particle Hydrodynamics (SPH). Together these differences lead to
+significant macro differences between the predicted galaxy proper-
+ties (Villaescusa-Navarro et al. 2021b; Ni et al. 2022), however the
+fiducialsimulationsallreproducethegalaxystellarmassfunction(as
+well as other key scaling relations) at 𝑧=0to reasonable accuracy.
+1https://learning-the-universe.org/Each simulation contains 2563dark matter and baryonic (gas
+particle) resolution elements, of mass 𝑚DM=6.49×107(Ωm−
+Ωb)/0.251ℎ−1𝑀⊙and𝑚b=1.27×107ℎ−1𝑀⊙, respectively,
+withina periodicvolume of (25ℎ−1)3Mpc3.The initialconditions
+for each simulation were generated using second order Lagrangian
+perturbation theory using MUSIC(Hahn & Abel 2011), assuming
+the same initial power spectrum of gas and dark matter particles at
+𝑧=127. In all simulations a number of parameters are kept fixed,
+such asΩb=0.049,ℎ=0.6711,𝑛𝑠=0.9624,𝑀𝜈=0.0 eV,
+𝑤=−1,Ω𝐾=0. The differences between simulations are in the
+initial random phases, as well as 4 astrophysical parameters ( 𝐴SN1,
+𝐴SN2,𝐴AGN1,𝐴AGN2)and2cosmologicalparameters( Ωm,𝜎8).We
+stressthat,duetodifferencesinthesubgridmodelimplementations,
+the astrophysical parameters in each suite have different meanings.
+This is true even in the case where two simulations vary the same
+quantity(e.g.thewindspeed),becauseofthepreciseimplementation
+details, but also because different models hold different secondary
+parameters constant whilst varying this primary variable. The phys-
+ical meaning of each parameter in each galaxy formation model is
+described in Table 1.
+StructuresarefirstidentifiedwiththeFriends-of-Friendsalgorithm
+(FOF; Davis et al. 1985) and substructrues with Subfind (Springel
+etal.2001).Wetreatthe Subfindoutputsasdiscretegalaxies,where
+the total stellar mass is >108M⊙(corresponding to at least 5 star
+particles). We note that resolution effects due to discrete sampling
+ofthestarformationhistorycanhavealargeimpactontheresulting
+emission, particularly in the UV (Trayford et al. 2015). We will
+explore methods for smoothing the recent star formation in future
+work. In this work we extract the age and metallicity of each star
+particle in each subhalo, and model the emission from each star
+particle independently (described in Section 3).
+There are a number of different simulation sets within each
+CAMELS suite. The Cosmic Variance (CV) set contains 27 simula-
+tions with identical (fiducial) parameters, only changing the initial
+randomnumberseed,inordertoprovideameansofassessingtheim-
+pactofcosmicvariance.TheLatinHypercube(LH)setcontains1000
+simulations where the 6 parameters are varied using a latin hyper-
+cube within the following ranges: Ωm∈[0.1,0.5],𝜎8∈[0.6,1.0],
+𝐴SN1∈ [0.25,4.0],𝐴SN2∈ [0.5,2.0],𝐴AGN1∈ [0.25,4.0], and
+𝐴AGN2∈[0.5,2.0]2. The 1 Parameter (1P) set contains 25 simu-
+lations where one parameter at a time is varied around the fiducial
+parameters. In the 1P and CV sets the fiducial cosmological param-
+eters areΩm=0.3and𝜎8=0.8, and the fiducial astrophysical
+parameters are defined at 𝐴=1.0.
+The full CAMELS dataset is available online at https://
+camels.readthedocs.io/en/latest/data_access.html ,and
+described in Villaescusa-Navarro et al. (2023). We generate pho-
+tometry for galaxies in all sets (pipeline described in Section 3, and
+catalogue in Appendix A), and these are also made available online
+at the same address.
+3 FORWARD MODELLING WITH SYNTHESIZER
+In order to model the emission for all galaxies in the CAMELS
+simulation suites we employ a forward model for the UV-optical
+spectral energy distribution that takes into account stellar emission
+andtheimpactofdustattenuation.Importantly,wechooseaforward
+model that is agnostic to the specific subgrid implementation in
+2For Astrid, the 𝐴AGN2parameter also ranges from 0.25 to 4.0
+MNRAS 000, 1–27 (2024)4 C. C. Lovell et al.
+Table 1.A summary of the physical meaning of the feedback parameters in each of the simulation suites.
+Simulation 𝐴SN1 𝐴SN2 𝐴AGN2 𝐴AGN2
+Swift-EAGLEGalactic winds:
+energy per SNII
+event[0.25−4.0]Galactic winds: metallicity
+dependence of the stellar
+feedback fraction per unit
+stellar mass[0.5−2.0]Thermal BH feedback:
+scaling of the Bondi accretion
+rate[0.25−4.0]Thermal BH feedback:
+temperature jump of gas
+particles[0.5−2.0]
+AstridGalactic winds:
+energy per unit
+SFR[0.25−4.00]Galactic winds: wind speed
+[0.50−2.00]Kinetic mode BH feedback:
+energy per unit BH
+accretion[0.25−4.00]Thermal mode BH feedback:
+energy per unit BH
+accretion[0.25−4.00]
+SimbaGalactic winds:
+mass loading
+[0.25−4.00]Galactic winds: wind speed
+[0.50−2.00]QSO & jet mode BH feedback:
+momentum flux[0.25−4.00]Jet mode BH feedback: jet speed
+[0.50−2.00]
+Illustris-TNGGalactic winds:
+energy per unit
+SFR[0.25−4.00]Galactic winds: wind speed
+[0.50−2.00]Kinetic mode BH feedback:
+energy per unit BH
+accretion[0.25−4.00]Kinetic mode BH feedback:
+ejection speed / burstiness
+[0.50−2.00]
+Figure 1. Spectral energy distribution of an example galaxy from the Illustris-TNG CV set at𝑧=0.1. Shown is the intrinsic emission from young and old
+stars,thecombinedintrinsicemission,aswellasthetotalattenuatedemission.Filtertransmissioncurvesforsomeofthekeyrest-framefiltersusedinthiswork
+are also shown.
+eachgalaxyformationmodel,whetherthatis Illustris-TNG ,Swift-
+EAGLE,AstridorSimba. This ensures that the results for each
+model are comparable; the emission of each galaxy is dependent
+onlyonitsstarformationandmetalenrichmenthistory,itselfderived
+from the distribution of star particle properties.
+Weuse Synthesizer (Lovelletal. in prep.,Roperetal. in prep.)to
+produce synthetic observables, leveraging flexibility and computa-
+tionalefficiency.Belowwedescribethedifferentingredientsthatgo
+into our Synthesizer forward model, and the resulting luminosity
+and colour distributions.
+3.1 Stellar population modelling
+The intrinsic stellar emission is produced by coupling each star par-
+ticleinagalaxytoastellarpopulationsynthesis(SPS)model,basedon its age, metallicity and initial stellar mass3. The ‘current’ stellar
+massofastarparticletakesintoaccounttherecyclingofmassdueto
+evolvedstellarpopulations;sinceSPSmodelsimplicitlyaccountfor
+thisasafunctionofage,theinitialstellarmassmustbeusedasinput.
+The integrated emission of a galaxy is then the sum of the particle
+contributions.Inordertoprovideaqualitativeassessmentoftheim-
+pactofthechoiceofSPSmodel,wegeneratetheemissionusingtwo
+different SPS models: BC03 (Bruzual & Charlot 2003) and BPASS
+(Eldridge et al. 2017; Stanway & Eldridge 2018). For BC03, we use
+thePadova2000tracks,describedinGirardietal.(2000,2002).For
+BPASSweusev3.2,describedinByrneetal.(2022).Forbothmod-
+elsweassumeaChabrier(2003)initialmassfunction(IMF),witha
+highmasscutoffof100 M⊙,andalowmasscutoffof0.1 M⊙.Thisis
+3InitialstellarmassesarenotavailableforAstrid,soweassumethatallstar
+particles have an initial mass equal to 1/4 the initial gas element mass (Bird
+et al. 2022).
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 5
+identicaltotheIMFassumedineachgalaxyformationmodel,which
+ensures consistency between the feedback and enrichment subgrid
+prescriptions and the forward modelled emission.
+Trayford et al. (2015) showed that applying a 3D or 2D aperture
+can impact the luminosities of extended, high mass objects, where
+up to 40% of the light comes from an extended intracluster compo-
+nent. However, we choose to neglect aperture corrections, for three
+reasons. Firstly, the low resolution of the fiducial CAMELS simula-
+tions,intermsofmass( ∼107M⊙perresolutionelement)andforce
+resolution, leads to poorly estimated galaxy sizes. Secondly, since
+thevolumeofeachsimulationisrelativelysmall,wedonotsimulate
+anymassiveclustersorgroups;assuch,wearenotinamassregime
+where aperture corrections are important. And thirdly, the precise
+aperture corrections will be strongly dependent on the exact survey
+configuration and redshift distribution of sources, a detail we do not
+consider in this work. As a result, we choose not to apply any 2D or
+3D apertures when estimating photometry.
+We do not model the impact of nebular emission from young star
+forming regions, nor the contribution of active galactic nuclei; we
+leaveanassessmentoftheimpactofthesecomponentsonourresults
+to future work. We also ignore the effect of the clumpy intergalactic
+medium (IGM), since we concentrate on rest-frame bands redward
+ofLyman-𝛼,andsincethiseffectwillnothavealargeimpactbelow
+𝑧∼3.
+WeadopttheBC03modelsasourfiducialSPSmodelthroughout
+the manuscript, unless otherwise stated. Figure 1 shows the inte-
+grated intrinsic emission in the UV-optical wavelength range from
+an example galaxy taken from one of the Illustris-TNG CV set sim-
+ulations.
+3.2 Dust model
+Dustconstitutesonlyaround0.1%ofthetotalbaryonsintheUniverse
+today, but has an outsize effect on galaxy emission; around 30% of
+all photons today have been reprocessed by dust grains (Bernstein
+etal.2002).Toaccountfortheeffectofdustinawaythatisagnostic
+to the underlying galaxy formation model, we adopt a simple two-
+component dust model that differentially attenuates young and old
+stars,analogoustothatfirstpresentedbyCharlot&Fall(2000).The
+model varies the dust optical depth 𝜏as follows,
+𝜏=𝜏cloud+𝜏ISM 𝑡⩽𝑡disp (1)
+𝜏=𝜏ISM 𝑡 >𝑡 disp (2)
+where𝜏cloud=0.67,𝜏ISM=0.334and the dispersion time 𝑡disp=
+10 Myr. These parameters were calibrated to nearby galaxies, and
+havebeenusedinpreviousstudiesemployingsimilarmodels(Genel
+et al. 2014; Trayford et al. 2015). The only property of each galaxy
+(andbyextensioneachgalaxyformationmodel)thatdirectlyaffects
+the level of attenuation is the ratio of stellar mass formed before or
+after𝑡disp.
+We use a fixed Milky Way attenuation curve (Pei 1992),
+parametrised using the analytic form of Li et al. (2008). The trans-
+mission at wavelength 𝜆for a particle with age 𝑡is then given by
+𝑇(𝜆,𝑡)=exp
+−𝜏MW(𝜆)
+𝜏MW(𝜆=5500Å)
+×(𝜏cloud+𝜏ISM)
+(3)
+We do not model thermal re-emission from dust, nor scattering; the
+4Assuming a hydrogen density 𝑁cloud
+H=1.37×1021cm−2and𝑁ISM
+H=
+6.79×1020cm−2,foranextinctioncrosssection 𝐶𝑉
+ext=4.86×10−22(Draine
+2003), all calculated at visible wavelengths, 𝜆𝑉=5500Å,latter has been shown to contribute negligibly to the galaxy attenua-
+tion curve (Fischera et al. 2003).
+In Simba, the properties of dust are predicted self-consistently
+usinganon-the-flycreation,growthanddestructionmodel(Lietal.
+2019);intheinterestsofconsistencywiththeothergalaxyformation
+models, we ignore these properties, and adopt the model above. In
+future work we will explore the impact of our assumed dust model,
+and perform direct inference on these dust parameters, as well as
+marginalisationovertheeffectofdustincosmologicalinference.We
+will also explore how to link the attenuation to the properties of the
+galaxy (e.g. the metallicity of star-forming gas) in a model agnostic
+way.
+3.3 Photometry
+We generate rest-frame photometry from each of our intrinsic and
+dust–attenuatedgalaxySEDsinarangeofphotometricfilters.These
+include the GALEX FUV & NUV bands, top-hat filters centred at
+1500Åand 2800Å,SDSS ugriz,UKIRTUKIDSS YJHK,andJohn-
+sonUBVJbands5.ThesefilterprofilesareshowninFigure1.Wead-
+ditionallycalculaterest-frameandobserver-framefluxesintheHST
+ACSF435W,F606W,F775W,F814W,andF850LPbands,theHST
+WFC3 F098M, F105W, F110W, F125W, F140W and F160W, and
+JWST NIRCam F070W, F090W, F115W, F150W, F200W, F277W,
+F356WandF444W.Wedonotusethesebandsinthisstudy,butmake
+thempubliclyavailableforthecommunity.Formally,theluminosity
+𝐿in each band 𝑋is defined as so,
+𝐿𝑋≡∫∞
+0𝐿𝜈𝑆𝑋(𝜈)𝑑𝜈
+∫∞
+0𝑆𝑋(𝜈)𝑑𝜈, (4)
+where𝑆𝑋(𝜈)isthetransmissionatagivenfrequencyforband 𝑋.We
+thenconvertthecalculatedluminositiestoabsoluteABmagnitudes,
+𝑀𝑋=−2.5 log 10𝐿𝜈/(erg/s/Hz)
+𝑑=10pc
+−48.6, (5)
+where𝑑is the distance modulus and 𝐿𝜈is the luminosity density.
+Wedothisforallfourgalaxyformationmodelsover34snapshots
+in the redshift range 𝑧∈[0,6]. The catalogues for each simulation
+arepubliclyavailableat https://camels.readthedocs.io/ .For
+this study we use these magnitudes to build rest-frame luminosity
+functionsandcolourdistributionsatarangeofredshifts,exploredin
+more detail below.
+4 LUMINOSITY FUNCTIONS AND COLOURS IN CAMELS
+4.1 CV set distributions
+4.1.1 Galaxy formation model comparison
+The Cosmic Variance (CV) set contains 27 simulations, each using
+the same fiducial parameters, but varying the random seed of the
+initial conditions. Figure 2 shows the rest-frame luminosity func-
+tion (LF) from all 27 CV set simulations combined, for each galaxy
+formationmodelat 𝑧=0.1.EachLFisnormalisedbythetotalcom-
+bined volume of the simulations ( 27×(25ℎ−1)3Mpc3). We show
+theGALEXFUV,SDSS 𝑔and𝑖and2MASS 𝐾bandtodemonstrate
+thefullwavelengthrangeprobed( 1500Å-20 000Å).Wealsoshow
+5TransmissioncurvesobtainedfromtheSpanishVirtualObservatoryFilter
+Profile Service, (Rodrigo et al. 2012; Rodrigo & Solano 2020), http://
+svo2.cab.inta-csic.es/theory/fps/index.php?mode=voservice .
+MNRAS 000, 1–27 (2024)6 C. C. Lovell et al.
+Figure 2. CV set Luminosity functions (LFs; in AB magnitudes) at 𝑧=0.1for the Illustris-TNG ,Simba,AstridandSwift-EAGLE simulation suites in the
+GALEXFUV,SDSS 𝑔and𝑖,andUKIRTKbands.EachLFisbuiltusinggalaxiesfromallCVsimulationscombined.EachpanelshowstheLFsobtainedfrom
+the attenuated (solid lines) and intrinsic (dashed lines) emission.
+Figure 3. The same as Figure 2, but showing normalised colour distributions. An additional magnitude cut for galaxies above 𝑀𝑟<−20has been applied to
+remove faint galaxies. Left to right: GALEX FUV−NUV, SDSS𝑔−𝑟,𝑟−𝑖,𝑖−𝑧.
+boththeintrinsicanddustattenuatedLFsineachcase.It’sclearthat
+there are significant differences between the different galaxy forma-
+tion models in all bands. Astrid has the lowest normalisation across
+the magnitude range in all bands, which matches what is seen for
+the galaxy stellar mass function (Ni et al. 2022). Simba extends to
+brighter magnitudes in all bands, but most noticeably at the blue
+end, where there is almost an order of magnitude more 𝑀FUV∼21
+galaxies than the other models. This may reflect the slightly higher
+normalisationofthegalaxystellasmassfunctionatthehighmassend
+in Simba (Davé et al. 2019). Both Illustris-TNG and Swift-EAGLE
+show similar behaviour in the form and normalisation at all wave-
+lengths, but the latter tends to have more faint galaxies in all bands,
+by approximately 0.5 dex. Dust attenuation has a more significant
+impact on bluer bands, as expected from the form of the attenuation
+curve.
+We also show a number of UV-optical (normalised) colour dis-
+tributions in Figure 3, including GALEX FUV−NUVand SDSS
+𝑔−𝑟,𝑟−𝑖and𝑖−𝑧. These include all galaxies above our fiducial
+stellar mass limit of 108M⊙, as well as a further cut to remove
+faint galaxies below an 𝑟-band magnitude limit of 𝑀r<−20. In all
+casestheinclusionofdustattenuationleadstominorshiftstoreddercolours. Astrid and Simba show similar colour distributions at all
+wavelengths,withasinglestrongpeakinalldistributionsthatcorre-
+spondstoapredominantlybluestarformingpopulation.Conversely,
+Swift-EAGLE and Illustris-TNG show more bimodal distributions,
+with a more pronounced red population at all wavelengths.
+4.1.2 Redshift evolution
+We have also generated rest-frame luminosity functions at a range
+of redshifts, shown in Figure 4, showing the evolution in abundance
+at different wavelengths6. In all galaxy formation models the FUV
+LF rises quickly, peaking at 𝑧∼2, before falling again by 𝑧=
+0. This corresponds to the evolution in the cosmic star formation
+rate density (Madau & Dickinson 2014); more recent star formation
+leads to higher UV emission. Interestingly, the shape of the LF also
+evolves with redshift in Simba, showing a more pronounced bright
+6Westressthattheserest-frameluminosityfunctionsathigherredshiftcan-
+notbedirectlycomparedtoobservationswithoutaccountingforthenecessary
+𝐾-corrections.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 7
+Figure 4. Luminosity functions (LFs; in AB magnitudes) in the GALEX FUV, SDSS 𝑔and𝑖, and UKIRT K bands, over a range of redshifts ( 𝑧∈[0,6]).
+Each LF is built using galaxies from all CV simulations combined, normalised by the total volume ( 27×(25ℎ−1)3Mpc3). We show the relations for the
+Illustris-TNG ,Simba,AstridandSwift-EAGLE simulation suites. Each panel shows the LFs for both attenuated (solid lines) and intrinsic (faded dashed
+lines) emission.
+population at intermediate redshifts, before settling to a Schechter-
+like distribution by 𝑧=0. At redder wavelengths this fall in the LF
+afterthepeakofcosmicstarformationislesspronounced,andinthe
+𝐾bandtheevolutionmirrorsthatofthegalaxystellarmassfunction,
+as expected.4.2 1P set distributions
+We now explore the impact of parameter variations on LFs, colours
+and mass-to-light ratios by studying the simulations in the 1P set,
+whichvaryeachparameteronebyonearoundthefiducialparameters.
+Figures 5, 6, 8, 9, 10 and 11 show the GALEX 𝐹𝑈𝑉and SDSS
+𝑟-bandLFs,theUV( 𝐹𝑈𝑉−𝑁𝑈𝑉)andoptical( 𝑔−𝑟)colourdistri-
+butions,andtheFUVand 𝑟-band(subhalo)mass-to-lightratiosfrom
+the 1P set for each galaxy formation model at 𝑧=0.1. We construct
+each mass-to-light (ML) ratio by normalising by the solar value at
+MNRAS 000, 1–27 (2024)8 C. C. Lovell et al.
+Figure5. 1Psetvariationsofthedust-attenuatedphotometryat 𝑧=0.1forIllustris-TNG,Simba,AstridandSwift-EAGLE(columnslefttoright,respectively),
+whenchanging Ωm.Top row:GALEXFUVluminosityfunction,withobservationsfromGALEXintheFUV(Budavárietal.2005). Second row: SDSS𝑟-band
+luminosity function, with observations from the GAMA survey (Loveday et al. 2012). Third row: GALEX FUV-NUV colour distribution, with observational
+constraintsfromGAMA. Fourth row: SDSS𝑔−𝑟colourdistribution,withobservationalconstraintsfromGAMA. Fifth row: GALEXFUVsubhalomass-to-light
+ratio against halo mass (individual objects are plotted where there are fewer than 10 sources in a halo mass bin). Sixth row: binned SDSS 𝑟-band subhalo
+mass-to-light ratio against halo mass. See Section 6.2 for caveats on the observational constraints.MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 9
+that wavelength,
+log10Υ𝑋/Υ⊙=log10(𝑀subhalo/M⊙)/(𝑀𝐴𝐵
+𝑋/𝑀𝐴𝐵
+𝑋,⊙),(6)
+where𝑀subhalois the total subhalo mass, 𝑀𝐴𝐵
+𝑋is the AB absolute
+magnitudeinband 𝑋,and𝑀𝐴𝐵
+𝑋,⊙istheabsolutemagnitudeofthesun
+in band𝑋(values obtained from Willmer 2018).
+Inordertoprovideabaselineforcomparisonwealsoshowobser-
+vationalconstraintsfromtheGAMAsurvey(Lovedayetal.2012)in
+the𝑟-band, GALEX in the FUV (Budavári et al. 2005), and the UV
+(𝐹𝑈𝑉−𝑁𝑈𝑉) and optical ( 𝑔−𝑟) rest-frame colours from GAMA
+(Liskeetal.2015)ascompiledbyPandyaetal.(2017),allat 𝑧∼0.1.
+Westressthattheseobservationallyderivedrest–framerelationsare
+notdirectlycomparabletotheresultsfromCAMELSpresentedhere,
+for reasons described in depth in Section 6.2; here we just mention
+that these observations are necessarily 𝐾-corrected, and cover dif-
+ferent volumes to those in CAMELS, making direct comparisons
+difficult.
+From these figures it is clear that each parameter has a different
+impact depending on the wavelength and galaxy formation model
+considered. We first explore the cosmological parameters, before
+moving on to the impact of the astrophysical parameters.
+4.2.1 Changes in Ωm
+An increase in Ωmleads to an increase in the overall normalisa-
+tion of the halo mass function (Villaescusa-Navarro et al. 2021b),
+due to accelerated formation of more massive haloes (McClintock
+et al. 2019). However, it has been unclear how this translates into
+changes in the LFs beyond the increase in the halo number density,
+since the emission is directly dependent on the star formation and
+metal enrichment history of each galaxy, which itself depends in a
+complicated way on the underlying cosmology (Iyer et al. 2020, , in
+prep.).
+We see in Figure 5 that increasing Ωmleads to an increase in the
+number of faint galaxies in the optical ( 𝑟-band), with little depen-
+dence on the galaxy formation model, similar to how it impacts the
+galaxystellarmassfunction(Nietal.2023;Lovelletal.2023;Joetal.
+2023). We see a similar relationship in the UV, though the relations
+are more noisy, which reflects the sensitivity of the UV emission to
+star formation on relatively short timescales (last ∼100 Myr; Lee
+et al. 2009). In general, however, for values of Ωm> 0.3 the opti-
+cal and UV LFs are mostly degenerate, with very little differences
+across all magnitudes. The UV and optical ML ratios in Figure 5
+help explain this behaviour. Whilst the overall normalisation of the
+halo mass function increases with increasing Ωm, the ML ratio also
+increases; galaxies in equal mass haloes are fainter in a universe
+with a higher Ωm. This trend is monotonic for all models, except
+Swift-EAGLE, which shows a more complicated evolution for Ωm=
+0.1 (the ML ratio in the UV and optical is much higher in low mass
+haloes).
+Above a halo mass of 1011M⊙there is a general trend across
+all simulations and parameters for the ML ratio to decrease with in-
+creasingsubhalomass;thisexplainsthecharacteristicschechter-like
+shape of the luminosity function in these bands at faint magnitudes
+(Bullock&Boylan-Kolchin2017).Themassatwhichthisfalloccurs
+isrelativelyinsensitiveto Ωm,whichexplainsthelackofcorrelation
+of the shape of the LFs with Ωm(except for in Swift-EAGLE). The
+magnitude of the dependence of the ML ratio on Ωmis also model
+dependent;thelargestvariationsatahalomassof 1012M⊙areseen
+in Swift-EAGLE and Astrid, with a difference in the ML ratio in
+the UV of|Υ𝑋|>2. This explains why there is also a significantdecrease in the normalisation at the brightend of the UV LF for the
+highestΩmvalues in these models.
+The colour distributions also tell an interesting story. As Ωmin-
+creases,weseereddercolourdistributionsinboththeUVandoptical.
+The magnitude of this effect in the optical is largest for the Swift-
+EAGLE model; the blue population centred at 𝑔−𝑟=0.3forΩm=
+0.1completelydisappearswhen Ωmisincreasedto0.5,leadingtoa
+unimodal distribution of red galaxies ( 𝑔−𝑟∼0.8). This behaviour
+suggeststhatnotonlyistheabundanceofhaloesandtheirMLratios
+changingwith Ωm,butalsothatthiseffectiswavelengthdependent.
+Also interesting is that there are less degeneracies between models
+withhighΩmintheUVandopticalcolourspaces,withcleardiffer-
+encesintheircolourdistributionsthroughouttherangeof Ωmprobed.
+This will become important when performing SBI to infer the value
+ofΩmfrom these distributions, discussed further in Section 5.3.
+Sinceahigher Ωmleadstonotonlyahigherabundanceofhaloes
+but also their accelerated formation (McClintock et al. 2019), the
+stellar ages in these massive haloes may be generally higher, lead-
+ing to the reduced abundance of UV-bright galaxies, and an overall
+reddening of their colours. Quiescent fractions have not been stud-
+ied in the fiducial Astrid simulation at 𝑧=0.1, but in EAGLE they
+show a strong correlation with galaxy mass (Furlong et al. 2015), in
+agreementwithobservationalconstraintsonthepassivefraction,and
+supportingthisnarrative.However,similarbehaviourisalsoseenin
+Illustris-TNG (Donnari et al. 2019, 2021; Gabrielpillai et al. 2022)
+and Simba (Davé et al. 2019; Rodríguez Montero et al. 2019; Ap-
+plebyetal.2020).Simbaproducessmootherstarformationhistories
+that tend to form later (Dickey et al. 2021), which may also explain
+theelevatedrecentSFRsathigher Ωm,sinceanylong-termvariabil-
+itywillhavehadlesstimetoimprintontheoverallSFH(Zhengetal.
+2022).
+Mergers between haloes and their host galaxies are also more
+frequent in a universe with higher Ωm. Rodríguez Montero et al.
+(2019)showedhowmergershaveverylittleeffectonpassivefractions
+in Simba, suggesting this effect will have little impact on recent star
+formation,andthereforetheUVemission,inthismodel.Dickeyetal.
+(2021) showed how passive fractions at low-masses are elevated in
+isolated galaxies in EAGLE compared to Illustris-TNG and Simba,
+but lower for the most massive objects, which makes it difficult to
+pick apart the impact of (recent) mergers in these models.
+4.2.2 Changes in 𝜎8
+The value of 𝜎8encodes the degree of matter clustering, and it
+has an interesting, and perhaps unexpected, impact on the LFs and
+colours. Increasing 𝜎8does not have a strong effect on the optical
+LFsinallmodels,northeopticalMLratios(exceptasmallincrease
+for increasing Ωmin Simba at halo masses ∼1012M⊙). However,
+𝜎8does have a discernible effect on the UV LF in some models.
+This effect is most pronounced in Simba, where the magnitude of
+the brightest object in the UV increases by up to 1.5 magnitudes to
+𝑀FUV=−20for𝜎8= 0.6. This can be explained by increases in
+the UV ML ratios of up to 0.8 dex in Simba as 𝜎8increases, much
+greater than any other model.
+However, the strongest dependence on 𝜎8is seen in the colours;
+increasing𝜎8tends to lead to redder colours in the UV, but partic-
+ularly in the optical ( 𝑔−𝑟), for all models. In Swift-EAGLE and
+Illustris-TNGthismanifestsasarelativeshiftintheheightofthered
+andbluepopulationsintheirrespectivebimodalcolourdistributions.
+Incontrast,inSimbaandAstridthismanifestsasashiftinthepeakof
+the unimodal distribution. This suggests that there is a fundamental
+MNRAS 000, 1–27 (2024)10 C. C. Lovell et al.
+Figure 6. The same as Figure 5, but showing the variation in the 𝜎81P set.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 11
+differenceinhowchangesin 𝜎8manifestindifferencesinthecolour
+distributions.
+Since the emission is wholly dependent on the star formation and
+metal enrichment history (SFZH) of our galaxies, we explore how
+this SFZH, and its marginal distributions, is dependent on the value
+of𝜎8to try and understand these correlations. Figure 7 shows the
+normalised star formation history, using the summed ages of all star
+particles in each volume, from the Illustris-TNG 1P set changing
+𝜎8, further binned by stellar metallicity. It is clear that, for higher
+𝜎8, galaxies form earlier, and the aggregate stellar population age is
+therefore older. We find a similar trend for the other models. This is
+the primary driver of the redder colours seen in Figure 6.
+Figure 7 also shows the normalised metallicity distributions as a
+function of𝜎8in Illustris-TNG, in bins of stellar age. These show a
+moresubtledependenceon 𝜎8;greaterclusteringleadstomarginally
+higher metallicites, but only in the oldest stellar populations. This
+may have a second order impact on the colour distributions, but
+the main driver is the stellar ages. A more detailed exploration of
+the impact of cosmological and astrophysical parameters on the star
+formationandmetalenrichmenthistoriesofgalaxiesinCAMELSis
+provided in Iyer et al. in prep..
+For larger𝜎8, galaxies of all masses will tend to live in denser
+environments, closer to massive haloes and filaments, which may
+have an additional impact on galaxy colours. Bulichi et al. (2024)
+explored how this impacts galaxy properties in the Simba model;
+they found that SFRs tend to be reduced with increasing proximity
+tomassiveneighbours,thatsatellitesareaffectedmorethancentrals,
+andthatincreasedshockheatinginlargescalestructuressuchasfila-
+ments,ratherthantheimpactoffeedback,drivesthesereductionsin
+SFR.Bulichietal.(2024)alsocomparedtheirresultsforSimbawith
+EAGLE and Illustris, and found that the trend of SFR with filament
+proximity is smoother in Simba, compared to a more abrupt change
+inEAGLEandIllustris-TNG.Theseeffectsmayexplainthebi-modal
+colourdistributionsseenintheselattermodels,andcontributetothe
+relative impact of changes in 𝜎8on the colour distributions.
+4.2.3 Changes in supernovae feedback parameters
+The𝐴SN1and𝐴SN2parameters control different elements of the
+subgrid star formation feedback models in each galaxy formation
+model (see Table 1 for a summary), and as such it is not possible
+to compare them directly. Instead we explore each galaxy formation
+model in turn, and discuss the impact of each parameter change on
+that specific model. Figure 8 show the variation of the LFs, colour
+distributions and ML ratios for 𝐴SN1, and Figure 9 shows the same
+for𝐴SN2.
+InIllustris-TNG, 𝐴SN1controlsthefeedbackenergyperunitSFR
+in the form of stellar winds, whereas 𝐴SN2controls the speed of
+those winds. Both parameters have a significant impact on the UV
+and optical LFs. In the optical, increasing 𝐴SN1tends to lead to a
+reduction in the normalisation at all magnitudes, which is reflected
+in the increasing normalisation of the ML ratio at all halo masses
+with increasing 𝐴SN1. This increase is greatest for haloes with mass
+between 1011−1012M⊙, which reflects the fact that feedback from
+stellar winds affects these relatively lower mass haloes more effec-
+tively. In the UV, the evolution is more complex; the UV ML ratio
+increaseswithincreasing 𝐴SN1atlowhalomasses( <1012M⊙),but
+above this mass limit the relation reverses. This leads to a reduction
+inthenormalisationofthefaintendoftheUVLF,butanincreasein
+the normalisation at the bright end.
+Thisbehaviourmaybeexplainedbythesecondaryeffectofstellar
+feedbacksuppressingsupermassiveblackhole(SMBH)growth;Till-man et al. (2023) show how increasing 𝐴SN1leads to a decrease in
+theoverallnumberdensityofblackholes,reducingtheglobalimpact
+of AGN feedback. This latter effect also has an obvious impact on
+the colours, leading to a much bluer distribution in the UV-optical.
+It may also reflect that increasing 𝐴SN1leads to greater gas heating,
+ratherthanexpellinggasfromhaloes,sothatgasisstillavailablefor
+star formation at later times once it has cooled.
+Onthecontrary, 𝐴SN2,whichcontrolsthespeedofgalacticwinds,
+hasalargeimpactonthebrightendofeachLF.Thisisreflectedinthe
+MLratios,wherethereisastrongdependenceon 𝐴SN2inrelatively
+highermasshaloes( >1012M⊙)Thismayreflectthefactthatgashas
+beenfullyexpelledfromhaloesbythehigherwindspeeds,reducing
+the overall gas fractions (though the details of baryon spread can
+depend in a complex way on feedback parameters, see Gebhardt
+etal.2024).Impactsonthegrowthandaccretionontonearbymassive
+haloes, containing the brightest galaxies, may also be a secondary
+effect. For𝐴SN2the secondary effects on the black hole number
+density are far less prominent.
+In Simba,𝐴SN1controls the mass loading of stellar winds, and
+𝐴SN2controls the wind speed. However, contrary to Illustris-TNG,
+increasingthewindspeed( 𝐴SN2)leadsto brightergalaxiesintheUV
+forhigherwindspeeds.TheMLratiosreflectthis,showingaturnover
+in the𝐴SN1dependence above 1012M⊙. Gebhardt et al. (2024)
+showed how increased wind speed actually leads to reduced baryon
+spread, since less gas is available in the central regions for AGN
+accretion, which may explain why there is increased star formation
+leading to higher UV emission. Tillman et al. (2023) showed that
+𝐴SN2inSimbaalsocurtailsSMBHgrowth,whichwouldcontribute
+to the bright end behaviour of the LFs, and also the bluer optical
+colour distributions. Also counter intuitively, increasing the mass
+loading of winds ( 𝐴SN1) leads to an increasein the number of UV
+brightgalaxies,andadecreaseinthelow-massnormalisation,which
+is also reflected in the increased fraction of blue galaxies.
+In Astrid,𝐴SN1controls the feedback energy per unit SFR in
+stellar winds, and 𝐴SN2the wind speed, both similarly to Illustris-
+TNG.𝐴SN1slightly reduces the faint-end abundance in the optical,
+due to increased ML ratios for higher 𝐴SN1below 1012M⊙. In the
+UV it is difficult to discern any clear trends due to the low number
+of galaxies, however the UV ML ratios show the opposite trend to
+the optical above 1012M⊙, with higher ML ratios for lower 𝐴SN1.
+asntwo has a very strong impact on the global normalisation of the
+LF in the UV and optical, leading to a drop of over 1 dex across
+all magnitudes. The implementation of the wind speed affects both
+highandlowmasshaloes,asclearlyseenintheMLratios,reducing
+star formation and the relative abundance across all halo masses.
+As a result, the number of galaxies in Astrid that reach the stellar
+mass and𝑟-band magnitude brightness limits for the colour plots in
+Figure9issignificantlyreducedforhigh 𝐴SN2,leadingtoverynoisy
+distributions;despitethistheoveralltrendsareforbluerdistributions
+at higher feedback parameters.
+Finally, in Swift-EAGLE 𝐴SN1controls the energy per unit SNII
+feedback event, which drive galactic winds, and 𝐴SN2controls the
+metallicity dependence of the feedback fraction per unit mass, 𝑛𝑍,
+𝑓th=𝑓th,min+𝑓th,max−𝑓th,min
+1+𝑍
+0.1𝑍⊙𝑛𝑍𝑛H,birth
+𝑛H,0−𝑛𝑛, (7)
+where𝑓th,maxand𝑓th,minarethe upperandlower limitsof thefeed-
+back fraction, and the (𝑛H,birth/𝑛H,0)−𝑛𝑛term controls the density
+dependence of the feedback fraction. Increasing 𝐴SN1leads to an
+overallreductionintheUVandopticalLFnormalisation.Intheop-
+tical this is clearly explained by the monotonic relationship between
+MNRAS 000, 1–27 (2024)12 C. C. Lovell et al.
+Figure7. Top:normalisedcosmicstarformationhistoryinbinsofstellarmetallicity,fromthe Illustris-TNG 1Pset,changing 𝜎8.Bottom:normalisedstellar
+metallicity distribution in bins of stellar age.
+ML ratio and 𝐴SN1, however in the UV things are more compli-
+cated, with clear dependencies of UV ML on halo mass that further
+depend on the value of 𝐴SN1. As for the colours, increasing 𝐴SN1
+leadstobluergalaxydistributions;thismayreflectsecondaryeffects
+on the growth of SMBHs, as discussed previously, or the fact that
+gas is heated rather than expelled, meaning there is fuel for later
+star formation. Increasing 𝐴SN2leads to increased ML ratios in the
+optical and UV, and subsequently reduced normalisation of the LFs
+atallmagnitudes.Italsoleadstoredderdistributions,whichreflects
+the fact that galaxies that enrich early are then susceptible to more
+powerful feedback at later times, reducing their star formation.
+4.2.4 Changes in AGN feedback parameters
+As is the case for the supernovae feedback parameters, 𝐴AGN1and
+𝐴AGN2controldifferentelementsofthesubgridAGNfeedbackmod-
+elsineachgalaxyformationmodel(seeTable1forasummary),and
+cannot be compared directly. Contrary to the supernovae param-
+eters, the AGN parameters have a much reduced effect in almost
+all the galaxy formation models. This reflects the small box size
+in CAMELS ((25ℎ−1)3Mpc3) and subsequent lack of (relatively)
+massive haloes, as well as SMBH self-regulation.
+In Illustris-TNG, 𝐴AGN1controls the kinetic energy released per
+unitSMBHaccretionmass,and 𝐴AGN2theejectionspeedandbursti-
+nessofthat ejectedmaterial(wheregreaterburstiness leadstomore
+frequentbutlowerenergyfeedbackevents;Tillmanetal.2023).How-
+ever, neither has any appreciable effect in either the LFs or colour
+distributions above and beyond butterfly effects (Genel et al. 2019).
+AsimilarstoryunfoldsforSimba;inthismodel 𝐴AGN1controlsthe
+momentum in quasar and jet mode feedback, and 𝐴AGN2the speed
+of the jet. However, neither has any impact on the LFs and colours.In Astrid𝐴AGN1controls energy per unit SMBH accretion, and
+thisparticularparameteralsohasnoimpactontheLFsandcolours.
+However,𝐴AGN2,whichcontrolstheenergyinjectedperunitaccre-
+tion mass in the thermalfeedback mode, has a large impact on the
+LFs, leading to an increase in excess of 1.5 dex at the bright end of
+the UV LF, and 1 dex in the optical. Why does increasing this par-
+ticular channel of BH feedback lead to increased number densities?
+The reason is efficient self-regulation: enhanced thermal feedback
+severelysuppressesthegrowthofSMBHs,reducingtheoverallfeed-
+backinjected(particularlyinthejetmode),leadingtoenhancedstar
+formation(Nietal.2023).Thisalsoleadstobluercoloursinboththe
+UV and optical. Another reason why we see a stronger effect from
+theAGNparametersinAstridcomparedtoSimbaandIllustris-TNG
+is that Astrid has a higher number density of massive black holes in
+thefiducialmodel,asevidencedbythe0.5dexhighernormalisation
+oftheblackholemassfunctionatthehigh-massend(Nietal.2023).
+Finally, in Swift-EAGLE AGN feedback is implemented in a
+purely thermal mode; 𝐴AGN1controls the efficiency scaling of the
+Bondi accretion rate, and 𝐴AGN2the temperature jump of the gas
+during AGN feedback events. Neither parameter has a large effect
+on the optical LFs, but there is a small difference in the bright end
+in the UV, whereby increasing both parameters reduces the abun-
+danceofUVbrightgalaxies.Thedifferencesinthecoloursaremore
+pronounced; increasing both parameters lead to redder UV and op-
+tical colours. This suggests that increasing the primary efficacy of
+thermal feedback in Swift-EAGLE does not lead to the same self-
+regulation effects seen in Astrid, and had a more predictable effect
+on the luminosities and colours of massive, bright galaxies hosting
+AGN.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 13
+Figure 8. The same as Figure 5, but showing the variation in the 𝐴SN11P set.
+MNRAS 000, 1–27 (2024)14 C. C. Lovell et al.
+Figure 9. The same as Figure 5, but showing the variation in the 𝐴SN21P set.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 15
+Figure 10. The same as Figure 5, but showing the variation in the 𝐴AGN11P set.
+MNRAS 000, 1–27 (2024)16 C. C. Lovell et al.
+Figure 11. The same as Figure 5, but showing the variation in the 𝐴AGN21P set.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 17
+5 SIMULATION BASED INFERENCE WITH LTU-ILI
+We now explore the use of our forward modelled UV-optical lumi-
+nosity and colour distributions from the CAMELS LH set within
+an SBI framework. SBI is a powerful framework for performing in-
+ference in this domain since it permits amortized posteriors, which
+significantly speeds up the process of obtaining posteriors. This al-
+lowsustoapplythetrainedmodeltohundredsoftestsetsimulations
+in just fractions of a second. Additionally, SBI does not require an
+explicitlikelihood,whichpermitustousemorecomplexnoisemod-
+els, which we will explore in future work when comparing directly
+to observations.
+5.1 SBI Architecture
+WeusetheLtU-ILIpackage(Hoetal.2024)toperformSBI.LtU-ILI
+isacodebasethatsimplifiesmanyofthestepsinanSBIanalysis,par-
+ticularly those concerning testing and validation such as estimating
+the epistemic uncertainty, choosing hyperparameters, and assessing
+modelmisspecification.Weusethe sbipackagewithinLtU-ILI,and
+perform neural posterior estimation (NPE; Papamakarios & Murray
+2016;Greenbergetal.2019),toallowamortizedinference.Wecon-
+structanensembleoftwomodels,eachcomposedofaneuralspline
+flow (Durkan et al. 2019) with 4 transforms, 10 spline bins, and
+60 hidden features. During training we use a batch size of 4, and a
+fixed learning rate of 5×10−4, and an improvement based stopping
+criterion.
+Throughout the rest of this manuscript we will present models
+trained and applied to different simulations. We use the same ar-
+chitecture for each trained model. For each simulation we reserve
+a subset of the LH simulations as a test set (10%), and a further
+subset of the remaining simulations for validation (10%). The re-
+maining simulations we use for training, and evaluate our model
+performance during training on the validation set. Our priors are set
+bythechosendistributionoftheparametersintheLHset,described
+inVillaescusa-Navarroetal.(2021b).Aftertraining,toproducepos-
+teriors for a given set of parameters we directly take 1000 samples
+from the NPE.
+For our input data we choose a subset of attenuated luminosity
+functions (in the GALEX 𝐹𝑈𝑉and𝑁𝑈𝑉bands, and the SDSS
+𝑢𝑔𝑟𝑖𝑧bands) and colour distributions ( 𝐹𝑈𝑉−𝑁𝑈𝑉,𝑔−𝑟,𝑟−𝑖,
+𝑖−𝑧).Foreachluminosityfunctionweapply12binslinearlyspaced
+between bright- and faint–end AB magnitude limits given in Ta-
+ble2.Forcolourdistributions,wealsoapply12binslinearlyspaced
+between the red- and blue–limits given in Table 3. We provide the
+observational data as a single one-dimensional concatenated vector,
+X;wheremultipleredshiftsareconsideredthesearesimplyconcate-
+nated together. We perform coverage tests for each trained model,
+discussed in Appendix B. In the following sections we will explore
+how our results depend on the choice of luminosity functions or
+colours, and how combining distributions at different redshifts can
+improve constraints on key cosmological and astrophysical parame-
+ters.
+5.2 Inference
+We begin by showing the predicted marginal posteriors on our cos-
+mological and astrophysical parameters for all test set simulations,
+usingamodeltrainedandtestedonthesamegalaxyformationmodel,
+inFigures12&13.Weshowposteriorpredictionsfor Ωm,𝜎8,𝐴SN1,
+𝐴SN2,𝐴AGN1and𝐴AGN2against their true values, for Illustris-
+TNG,Simba,Swift-EAGLE andAstrid. As input data we provideTable 2. Bright- and faint–end AB magnitude limits chosen for luminosity
+functions used in the SBI analysis.
+Band Bright limit Faint limit
+FUV -20.5 -15
+NUV -20.5 -15
+u -21.5 -16
+g -22.5 -17
+r -23.5 -18
+i -24 -18.5
+z -24.5 -19
+Table3.Blue-andred–limitingcolourschosenfortheconstructionofcolour
+distributions used in the SBI analysis.
+Colour Bright limit Faint limit
+𝐹𝑈𝑉–𝑁𝑈𝑉 -0.5 3.5
+𝑔–𝑟 0.0 1.0
+𝑟–𝑖 0.0 0.5
+𝑖–𝑧 -0.1 0.4
+all luminosity functions and colour distributions described in Sec-
+tion 5.1 at a single redshift, 𝑧=0.1. We also calculate a number
+of statistics describing the goodness of fit, including the Root Mean
+Squared Error (RMSE),
+RMSE=vut
+1
+𝑁𝑁∑︁
+𝑖=1(𝜃𝑖−𝜇𝑖)2, (8)
+and the mean relative error,
+𝜖=1
+𝑁𝑁∑︁
+𝑖=1|𝜃𝑖−𝜇𝑖|
+𝜇𝑖, (9)
+whichbothmeasurethe precision oftheestimate(lowervaluesbeing
+more precise). We also calculate the coefficient of determination,
+𝑅2=1−Í𝑁
+𝑖=1(𝜃𝑖−𝜇𝑖)2
+Í𝑁
+𝑖=1(𝜃𝑖−ˆ𝜃𝑖)2, (10)
+whichmeasuresthe accuracy oftheestimate(valuescloseto1being
+more accurate), and the reduced chi-squared,
+𝜒2=1
+𝑁𝑁∑︁
+𝑖=1(𝜃𝑖−𝜇𝑖)
+𝜎𝑖2
+, (11)
+which measures the accuracy of the estimated posterior uncertain-
+ties; values close to 1 indicate that the magnitude of the errors (ap-
+proximatedbythemarginalstandarddeviation 𝜎)hasbeenestimated
+correctly, whereas values above / below 1 indicate an under- / over-
+predictionoftheerror.Forallgalaxyformationmodelsandparame-
+ters (except for a couple of exceptions discussed below) the reduced
+chi-squared value lies between 0.76 and 1.55, which indicates that
+all errors are well estimated.
+TherearesomeclearlyvisibletrendsinFigures12&13. Ωmispre-
+dicted precisely andaccurately across all simulations, witha RMSE
+of0.03and𝑅2of0.93inSwift-EAGLE,thoughslightlylesswellin
+Astrid(RMSE=0.07, 𝑅2=0.63).Thisagreeswellwiththelargevari-
+ationsintheLFsandcolourdistributionsasafunctionof Ωmseenin
+Section 4.2.1. The value of 𝜎8is also predicted, somewhat surpris-
+ingly;allwehaveprovidedasobserveddataareluminosityfunctions
+andcolourdistributions,whichdonotincludeanyexplicitspatialin-
+formationfromwhichtoderiveclusteringconstraints.Theprecision
+and accuracy strongly depend on the galaxy formation model, with
+thebestprecisionandaccuracyfoundinIllustris-TNG(RMSE=0.05,
+MNRAS 000, 1–27 (2024)18 C. C. Lovell et al.
+Figure 12. Predicted marginal posteriors on the test set vs the true values for each cosmological ( Ωm,𝜎8) and astrophysical ( 𝐴SN1,𝐴SN2,𝐴AGN1,𝐴AGN2)
+parameter. These estimates use both colours and luminosity functions at 𝑧=0.1, described in more detail in Section 5.2, using training and testing data from
+the same galaxy formation model; we discuss generalisability across different models in Section 5.4. Top two rows : Swift-EAGLE. Bottom two rows : Astrid.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 19
+Figure 13. The same as Figure 12, but showing predictions for Illustris-TNG (top two rows) and Simba(bottom two rows).
+MNRAS 000, 1–27 (2024)20 C. C. Lovell et al.
+𝑅2=0.81), and the worst of both in Astrid (RMSE=0.09, 𝑅2=0.38).
+Thissuggeststhatspecificsofthegalaxyformationmodelaffecthow
+𝜎8impactsthepopulationgalaxyemission,asseeninSection4.2.2,
+highlighting the importance of taking into account such specifics
+when marginalising over astrophysics in a cosmological analyses
+using such observable features.
+As discussed in Sections 4.2.3 & 4.2.4, the feedback parame-
+ters are not directly comparable between galaxy formation models.
+However, in general, the stellar feedback parameters are all con-
+strainedtosomedegreeacrossallmodels.Certainparameters,suchas
+𝐴SN2forIllustris-TNG,arepredictedremarkablywell(RMSE=0.09,
+𝑅2=0.96), driven by the clear impact on the UV and optical LFs
+and colour distributions. In contrast, the AGN parameters are, in
+general, not constrained at all, tending to just predict the median
+of each distribution. There are some exceptions, such as 𝐴AGN1
+for Swift-EAGLE (RMSE=0.54, 𝑅2=0.66) and𝐴AGN2for Astrid
+(RMSE=0.76, 𝑅2=0.44).Thefactthatthesebothcontrolthethermal
+feedback mode suggests that this feedback mode may have more of
+an impact on the stellar contents of relatively lower mass haloes,
+present in these CAMELS simulation volumes. However, the dis-
+cussion in Section 4.2.4 clearly shows how these parameters affect
+galaxygrowth,andtheresultantobservables,inoppositedirections;
+in Swift-EAGLE, increasing the efficacy of the feedback by dump-
+ing more energy inhibits galaxy growth more efficiently, whereas
+in Astrid the opposite is true, as increasing the thermal energy per
+unitaccretedmasscurtailsSMBHgrowth,preventingSMBHsfrom
+growingmassiveenoughtostartthemoreeffectivejetfeedbackchan-
+nel. This may also explain why, despite the large differences seen in
+theLFsandcoloursforAstrid,therearesignificantdegeneraciesbe-
+tweenparameters,whichdegradestheposteriorpredictionaccuracy
+compared to e.g. 𝐴SN2.
+5.3 Feature Importance and Redshift Dependence
+Given the promising constraints on astrophysical and cosmological
+parametersdemonstratedinSection5.2,wenowaskwhatparticular
+information in our modelled data (or features) is providing con-
+straintsontheseparameters.Wealsoexplorehowusinginformation
+at different redshifts affects our inference, and whether combining
+distributionfunctionsfrommultipleredshiftscanimproveparameter
+constraints.
+5.3.1 Feature Importance
+Tobeginwithweshowfourexamplesoftheposteriorconstraintson
+simulationsfromthe Illustris-TNG testsetat𝑧=0.1as2Dcorner
+plots (Figure 14). The left column shows the constraints achieved
+whenprovidingluminosityfunctions(LFs)only,colourdistributions
+only, or the combination of LFs and colours. These clearly show
+the impact of the different features on the constraints for different
+parameters in these specific examples, and the correlations between
+the constraints on different parameters in some cases.
+Tobettersummarisetheimpactofthedifferentfeaturesacrossthe
+wholetestset,wecombinetheposteriorsinFigure15bybinningthe
+stackedresiduals;wherethesearemorepeakedatzero,thetighterthe
+constraintsonthisparameter.Herewecanclearlyseetheimportance
+of the various features on each parameter. Interestingly, it appears
+that LFs do not place tight constraints on Ωm. The variation with
+ΩmseeninFigure5intheFUVand 𝑟-bandismostlyforlowvalues
+ofΩm(< 0.3); at higher values the differences in the LFs are much
+smaller, which introduces large degeneracies, and leads to inflatederror estimates across the test set. Colours, on the other hand, do
+leadtoverytightconstraintson Ωm;thevariationcanbeseenacross
+the range of Ωmin Figure 5, which explains the low errors across
+the whole test set. For 𝜎8it appears that the use of LFs and colours
+individually give relatively similar constraints, but combined they
+provide much tighter constraints. For 𝐴SN1and𝐴SN2it is a similar
+story; comparable constraints for LFs and colours individually, but
+tighter constraints combined.
+The fact that colours drive the tight constraints on Ωmis a some-
+what surprising result. Jo et al. (2023) show how using just the
+binned galaxy stellar mass function can achieve tight constraints on
+cosmological and astrophysical parameters, even in the presence of
+simulation uncertainty. We do not include the 𝐾-band in this anal-
+ysis, which is known to closely trace the underlying stellar mass,
+howeveronemightnaivelyexpecttheopticalluminosityfunctionsto
+still provide sufficient information on the total stellar mass content.
+Thissuggeststhattheimpactofageandmetallicitydegeneraciesmay
+play an important role. It also highlights how the colours trace the
+stellarageoftheglobalgalaxypopulation,whichcanbesignificantly
+higher in a universe with a lower Ωm(up to 18 Gyr for Ωm=0.1),
+sincelowmassstarshaveexceedinglylonglifetimes(exceeding100
+Gyrs; Laughlin et al. 1997).
+5.3.2 Redshift Dependence
+Figure14alsoshowstwoexamplecornerplots(rightcolumn)when
+using the combination of the LFs and colours obtained at different
+redshifts. In all these examples the marginal posteriors are tighter
+when combining information from different redshifts, as expected.
+We summarise results from the whole test set in Figure 15, as we
+didfortheLFsandcolours.For Ωm,usingdataat 𝑧=0.1hasthemost
+constrainingpower,andthisdegradesathigherredshift.However,the
+improvement from combining information from the three redshifts
+is significant, decreasing the RMSE by >0.01. Interestingly, for 𝜎8
+themostconstrainingpowerisprovidedbythedistributionfunctions
+at𝑧=2; this suggests that the impact of matter clustering on the
+luminositiesandcoloursofgalaxypopulationsmaybemoreevident
+at cosmic noon.
+Itisworthnotingthat,intheseexamples,bycombiningsnapshots
+at different redshifts we are at risk of using the same galaxies at
+different points in their evolution. This may bias our constraints
+compared to a real survey, since galaxies at different redshifts along
+the lightcone will not be associated in the real Universe, and this
+evolution encoded at different times may be more constraining than
+independentmeasurements.Inordertoovercomethisissuewecould
+subdivideeachsimulationvolumeandtakegalaxiesfromsubboxesat
+different redshifts, however for the CAMELS boxes considered here
+the volumes are too small to get sufficient statistics. We will more
+robustly assess the impact of these correlations in future work with
+the larger volume CAMELS-SAM simulations (Perez et al. 2023).
+5.4 Generalization Across Different Models
+Oneofthemotivationsforincludingmultiplegalaxyformationsim-
+ulations in the CAMELS suite was to enable tests of the robustness
+of trained machine learning algorithms to different training simu-
+lations (de Santi et al. 2023b; Ni et al. 2023). In this case, we can
+use the forward modelled photometry from one simulation as input
+to our SBI pipeline trained on another, and test the recovery of the
+underlyingparameters.Sincetheastrophysicalparametersrepresent
+differentaspectsofeachmodelwecannotperforminferenceonthese
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 21
+Figure 14. Posterior 2D and 1D marginal posteriors for two randomly selected test set simulations from the Illustris-TNG suite. Each column of corner plots
+shows the same test set simulation posteriors, assuming different input features. The true values are indicated by the black dashed lines. Top row: posteriors
+givenluminosityfunctions(blue),colours(orange),orbothcombined(green). Bottom row: posteriorsgivenluminosityfunctionsandcoloursat 𝑧=0.1(navy),
+𝑧=2.0(olive), and both redshifts combined (pink).
+betweenmodels,soinsteadwefocusonthecosmologicalparameters
+Ωmand𝜎8.
+We find very poor recovery of parameters when testing between
+simulations,andthisisthecaseacrossallsimulationsusedfortrain-
+ingtheSBIframeworkandtesting.Thereasonforthiscanbeclearly
+seen in Figures 5, 6, 8, 9, 10 and 11, which show the range of lumi-
+nosity functions and colour distributions across the 1P sets of each
+subgrid model. There is very little agreement or overlap in the de-
+tailed distributions, which leads to out-of-distribution errors when
+performinginference.Wehavetestedusingjustluminosityfunctionsor just colour distributions, as well as reducing the fidelity of the
+distribution functions by reducing the number of bins, and achieve
+similarly poor results.
+Themainsourceofthislackofrobustnessistheverydifferentsub-
+gridprescriptionsineachmodel,whichleadtodifferentdistributions
+of point-in-time properties, such as stellar mass and star formation
+rate, as well as different overall star formation histories (Iyer et al.
+in prep.). Another source of inflexibility is in our forward model for
+galaxyemission,whichassumesasimpledustprescription,andfixes
+many key parameters, such as the nebular cloud dispersion time. In
+MNRAS 000, 1–27 (2024)22 C. C. Lovell et al.
+Figure15. Combinedmarginalposteriordistributionof Ωm,𝜎8,𝐴SN1and𝐴SN2fromalltestsetobjectsinthe Illustris-TNG suite. Left:modelstrainedusing
+luminosity functions (blue), colours (orange), or both combined (green). Right:models trained using luminosity functions and colours combined at 𝑧=0.1
+(navy),𝑧=1.0(green),𝑧=2.0(olive), and all three redshifts combined (pink).
+future work we will self-consistently modify elements and parame-
+tersoftheforwardmodel,suchasthedustattenuationmodel,which
+should lead to increased overlap in colour and luminosity space be-
+tween models. We will also explore contrastive learning (Le-Khac
+et al. 2020) and domain adaptation approaches (Roncoli et al. 2023;
+Ćiprĳanović et al. 2020, 2022), which have shown promise in over-
+coming these issues when combining models, and for extracting
+domain-invariant features, as well as approaches for excluding sig-
+nificant outliers (Echeverri-Rojas et al. 2023; de Santi et al. 2023a).
+6 DISCUSSION
+6.1 Cosmological Constraints
+The constraints on cosmological parameters demonstrated in Sec-
+tion 5.2 are surprising. By just considering UV-optical luminosity
+functions and colours we can obtain precise and accurate estimates
+ofΩmacrossdifferentsubgridgalaxyevolutionmodels.ForIllustris-
+TNG,Swift-EAGLEandSimbaweobtainaRMSEacrossthetestset
+of0.03,andforAstridslightlyhigherat0.07,whichrepresenthighly
+significantconstraints.ThesearetighterthanthoseobtainedbyHahn
+et al. (2024) on galaxies from the NASA-Sloan Atlas, despite only
+using summary statistics measured on a fraction of the number of
+galaxies. In Section 5.3 we show that, in Illustris-TNG, it is pre-
+dominantly galaxy colours that drive these significant constraints.
+This suggests that it is internalgalaxy properties that are affected
+by changes in the matter density, not just the overall abundance of
+haloes and therefore galaxies. This is supported by the dependence
+of the ML ratios on Ωm, which implicitly factors out the change in
+haloabundance.Thesefindingssomewhatsupportwhatwasfoundin
+Villaescusa-Navarro et al. (2022) and Echeverri-Rojas et al. (2023),
+wherethepropertiesofasinglegalaxywereusedtoobtainsignificant
+constraintson Ωm.Theconstraintsonmatterclustering,representedby𝜎8, are another surprising result presented in Section 5.2. For all
+four simulations we achieve a RMSE ⩽0.09, despite not including
+anyspatialinformationinourfeaturesatall.InSection5.3weshow
+that it is a combination of galaxy colours and luminosity functions
+that drives this good predictive accuracy in Illustris-TNG, which
+is in turn driven by the older ages of galaxy stellar populations in
+simulations with a higher 𝜎8.
+We stress that when interpreting these constraints quantitatively
+we must keep in mind that this analysis does not include any obser-
+vational uncertainties, which will degrade our constraints (see e.g.
+Hernández-Martínez et al. 2024). We discuss other observational
+considerations below. Additionally, we do not include any estimate
+of the simulation uncertainty; Jo et al. (2023) show that this can be
+derivedfromtheCVsetandusedwithinanemulatortoassessitsim-
+pact, and find that it can lead to wider estimated posteriors. Finally,
+our dust model does not depend in any way on galaxy properties.
+Includingthecorrelationsandcovariancesbetween,forexample,the
+massofdustandtheopticaldepth,orthestar-dustgeometryandthe
+form of the attenuation curve, will lead to degeneracies with some
+of the effects on the LFs and colours seen in Figures 5 and 6, which
+will degrade the constraints on cosmological parameters. However,
+conversely,thedustmodelitselfmayleakcosmologicalinformation,
+duetodependenciesontheSFZHfromeachgalaxy;weexplorethis
+effectwithourcurrentgalaxy-independentdustmodelbrieflyinSec-
+tion C. We will explore a more sophisticated model that takes these
+correlations into account in future work.
+6.2 Performing SBI directly on observations
+When performing inference in a simulation based inference frame-
+work on cosmological parameters in particular, one must take into
+account the impact of changing the cosmological parameter on any
+forward modelled properties or distribution functions. In this study,
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 23
+where we focus on volume normalised rest-frame distribution func-
+tions, this manifests in two main ways; 𝐾-corrections for rest-frame
+photometry, and cosmological volume normalisation.
+For rest-frame photometry, the change in luminosity distance im-
+plied by a change in Ωmleads to differences in the redshift, and
+therefore a change in the rest-frame part of the spectrum probed by
+the photometric filter (at a given redshift). In observed catalogues,
+theemissionwithinafilterbandpassintherest-frameisestimatedby
+assuminga𝐾-correction(Hoggetal.2002).Thiscorrectionassumes
+ashapeforthespectrum,whichdependsontheassumedgalaxypop-
+ulation, and its evolutionary history. These properties are explicitly
+cosmologydependent;ifthecosmologyisupdated,the 𝐾-correction
+(or,morespecifically,the 𝐸-correction)mustbeupdatedinlinewith
+thiscosmology.InanSBIframework,updatingthetargetobservable
+on each parameter iteration is not feasible. Instead, one could for-
+ward model into observer-frame fluxes, to avoid the application of a
+𝐾-correction altogether.
+Similarly, the change in apparent distance implied by a change
+inΩmalso leads to changes in the differential comoving volume
+at a given redshift. This impacts the volume normalisation of any
+derivednumbercountdistributions,suchasluminosityfunctions.In
+ordertoperformalike-for-likecomparison,itisnecessarytocorrect
+for this volume normalisation offset as a function of cosmology.
+Alternatively, one can forward model into the observer-frame, and
+normalisebytheskyarea,toavoidanydependenceoncosmological
+parameters.
+In this study we focus on rest-frame ,volume normalised distri-
+bution functions, rather than observer frame fluxes. This is to better
+understandtheimpactofvariousmodellingassumptionsontherest-
+frame properties, and better link to the underlying physics of each
+model. We are also limited by the relatively small volume of the
+CAMELS simulations, which makes it more difficult to project into
+observer-space through the construction of a lightcone.
+Finally, whilst observed luminosity functions from SDSS and
+GAMA are reasonably well covered in the intermediate magnitude
+range over our 1P parameters (see Figures 5 – 11), it is clear that
+we struggle to reproduce the detailed, complex colour distributions.
+Whilst the broad trends are captured, some bins in colour are out
+of distribution at this resolution. This is due to the known difficulty
+ofreplicatingthedetailedabundanceandcolourdistributionsinob-
+servational space, even over this extended parameter space (see e.g.
+Trayfordetal.2015).Infutureworkwewillinvestigatetheimpactof
+varyingmoreparametersinourforwardmodel,suchasthedustopti-
+caldepthandattenuationcurve,toinvestigatewhetherthisincreases
+the compatibility of observed colours with the simulations.
+For these reasons, we avoid performing inference directly on the
+observeddistributionfunctionsintherest-frame,andleaveadetailed
+comparison with observations in the observer-frame to future work.
+6.3 Forward Modelling Limitations
+As touched on briefly in Sections 3 and 2, there are a number of
+limitations in our modelling of the emission from galaxies, many of
+which are set by the fidelity of the fiducial CAMELS suites. Due to
+the low spatial and mass resolution of the hydro simulations we do
+notresolvegalaxysizes,whichprecludestheirinclusionasfeatures.
+We also therefore cannot include features such as emission profiles,
+or resolved maps of the emission in different bands. These features
+maycontaincrucialcosmologicalandastrophysicalinformation,and
+will be regularly estimated in upcoming wide field surveys, such as
+those from Euclid and Rubin.
+The mass resolution in particular also places constraints on re-solvedshorttimescalevariationsinthestarformationhistory.These
+are important for predicting the recent star formation. which is key
+forself-consistentlyproducingthecontributionfromnebularlineand
+continuum emission. This recent star formation can be estimated by
+smoothing the star formation history, or even by adding small scale
+variation through power spectral density methods (Iyer et al. 2020),
+however these typically require training from higher resolution in-
+put simulations. Finally, the application of detailed dust radiative
+transferapproaches,whilstalsolimitedbytheircomputationalcom-
+plexity, are also inappropriate for such low-resolution simulations,
+sincethestar-dustdistributionwillbepoorlyestimated.Insummary,
+whilst the fidelity of the CAMELS simulations is sufficient for an
+an analysis of broad band photometric emission in the UV-optical,
+higher resolution simulations will be required to explore these more
+detailed spatial and time-sensitive features, and for enabling more
+sophisticated forward modelling approaches.
+7 CONCLUSIONS
+We have forward modelled the UV-NIR emission from galaxies
+in the CAMELS simulation suites, and used these to perform
+Simulation Based Inference (SBI) on galaxy luminosity functions
+and colours. All photometric catalogues are made publicly avail-
+able at https://camels.readthedocs.io/en/latest/data_
+access.html for the community to use.
+Our findings are as follows:
+(i) We model luminosity functions and colour distributions in
+theGALEXFUV-NUV and SDSS ugrizphotometric bands for the
+Swift-EAGLE ,Illustris-TNG ,SimbaandAstridgalaxyformation
+models from 𝑧=0.1to6, and find significant differences between
+theirfiducialpredictions,particularlyintheiropticalandUVcolours.
+(ii) Cosmological and astrophysical parameters significantly im-
+pact the UV and optical luminosity functions and colours, with the
+relative impact depending on the subgrid galaxy formation model.
+In particular, we find that Ωmand𝜎8are both correlated with UV-
+optical colours, leading to redder galaxy distributions.
+(iii) We build an SBI model using the LtU-ILI framework to
+predict the values of the cosmological and astrophysical parameters
+from our combined luminosity functions and colours, and achieve
+relativelyaccurateandpreciseconstraintson Ωm,𝜎8,𝐴SN1&𝐴SN2
+acrossallgalaxyformationmodels.TheAGNparametersarepoorly
+constrained due to limitations in the CAMELS simulation volumes
+restricting the abundance of massive haloes.
+(iv) WeperformafeatureimportanceanalysisusingtheIllustris-
+TNGmodel,andfindthatthetightconstraintson Ωmaresurprisingly
+driven by the UV-optical colour information. Colour information is
+similarly important for 𝜎8constraints.
+(v) We investigate constraints from distribution functions at
+higher redshifts, and find that 𝜎8is best constrained at cosmic noon
+(𝑧=2),ratherthan 𝑧=0.1.Thetightestconstraintsforallparameters
+are obtained by combining information from multiple redshifts.
+(vi) The constraints on 𝜎8are surprising given the lack of any
+spatial or clustering information in our chosen features. We find
+thatenhancedclustering,parametrisedbyhigher 𝜎8,leadstoearlier
+formingandmoremetalenrichedgalaxies,whichmanifeststhrough
+theirstarformationandmetalenrichmenthistories,andsubsequently
+their luminosities and colours.
+(vii) As a test of robustness we apply a model trained on one
+simulationtoanother,andfindpoorgeneralisability,asseeninmany
+other CAMELS analyses. We attribute this to differences in the un-
+MNRAS 000, 1–27 (2024)24 C. C. Lovell et al.
+derlying subgrid prescriptions in the galaxy formation models, but
+alsoidentifyinflexibilityinourforwardmodelasapotentialculprit.
+Theseresultssuggestthatdistributionsofgalaxyluminositiesand
+colours across the UV-optical wavelength range contain not only a
+wealthofinformationonastrophysicalprocesses,butalsosignificant
+cosmological information content. Combined with more traditional
+sourcesofcosmologicalinformation,suchasgalaxyclusteringstatis-
+tics,thereispotentialtousethesepropertiestoprovidemorestringent
+constraints, and potentially break parameter degeneracies between
+probes. Calibration of subgrid models in hydrodynamic simulations
+of galaxy evolution is also an example where linking parameters to
+datainasimulation-drivenBayesianapproachhasadvantages(Elliott
+et al. 2021; Jo et al. 2023; Kugel et al. 2023); in this study we show
+how this can be done directly in observer space, rather than relying
+on inferred physical parameters obtained through SED fitting.
+However, we have also shown the sensitivity of our inference to
+the underlying galaxy formation model. Whilst we have discussed a
+numberofapproachesforovercomingthisinSection5.4,ingeneral
+improvedmodelswillhelptoreducethedomainshiftwhenapplying
+torealdata.Inaddition,exploringlargerparameterspaceswithmore
+physically motivated parameterisations of the astrophysics (e.g. the
+28parameterCAMELSSOBOLset;Nietal.2023)willhelptocover
+a larger volume of the astrophysical and cosmological parameter
+hypervolume.
+In addition, the simple forward model for galaxy emission em-
+ployed here can also be modified. The fidelity could be increased,
+for example by using radiative transfer approaches (Camps & Baes
+2015; Narayanan et al. 2021) to self-consistently produce a wider
+range of attenuation curves seen in the real Universe (Narayanan
+et al. 2018), or alternatively a larger range of parameters in the sim-
+ple models employed here could be explored. This is one of the key
+developmentgoalsof synthesizer (Lovelletal. in prep.,Roperetal.
+in prep.):toallowarapidexplorationofuncertainparametersinthe
+forwardmodel.Thisisstillahugedatachallenge,giventhesizeofa
+simulationsuitesuchasCAMELS( >200milliongalaxiesacrossall
+suites and snapshots).
+As described in Section 6.2, there are a number of difficulties to
+comparingdirectlywithobserveddatainanSBIframework.Infuture
+workwewillovercomeanumberoftheselimitations,atwhichpoint
+themethodwillbedirectlyapplicabletoanumberoffuturesurveys,
+such as Euclid (Euclid-Collaboration et al. 2024) and LSST (Ivezić
+et al. 2019), containing billions of sources.
+ACKNOWLEDGEMENTS
+We thank Viraj Pandya for providing the GAMA catalogues used
+to construct the observed rest-frame colour distributions. We also
+thank Mat Page, Sotiria Fotopoulou, Shy Genel, Yongseok Jo,
+ChangHoon Hahn, Greg Bryan, Rachel Cochrane and Stephen
+Wilkins for useful discussions. This work was supported by the Si-
+mons Collaboration on “Learning the Universe”. This work used
+the DiRAC Memory Intensive service (Cosma7) at Durham Uni-
+versity, managed by the Institute for Computational Cosmology
+on behalf of the STFC DiRAC HPC Facility (www.dirac.ac.uk).
+The DiRAC service at Durham was funded by BEIS, UKRI and
+STFC capital funding, Durham University and STFC operations
+grants. DiRAC is part of the UKRI Digital Research Infrastruc-
+ture. The data used in this work were, in part, hosted on equip-
+ment supported by the Scientific Computing Core at the Flat-
+iron Institute, a division of the Simons Foundation. This researchmade use of the Spanish Virtual Observatory (https://svo.cab.inta-
+csic.es) project funded by MCIN/AEI/10.13039/501100011033/
+through grant PID2020-112949GB-I00. TS acknowledges support
+by NSF grant AST-2421845 and NASA grants 80NSSC24K0089
+and 80NSSC24K0084. DAA acknowledges support by NSF grant
+AST-2108944, NASA grant ATP23-0156, STScI grants JWST-
+GO-01712.009-A and JWST-AR-04357.001-A, Simons Foundation
+Award CCA-1018464, and Cottrell Scholar Award CS-CSA-2023-
+028 by the Research Corporation for Science Advancement. AG is
+grateful for support from the Simons Foundation.
+We list here the roles and contributions of the authors accord-
+ing to the Contributor Roles Taxonomy (CRediT)7.Christopher C.
+Lovell:Conceptualization,Datacuration,Formalanalysis,Investiga-
+tion,Methodology,Software,Visualization,Writing-originaldraft,
+Writing-review&editing. TjitskeStarkenburg :Conceptualization,
+Investigation,Validation,Writing-Review&Editing. MatthewHo :
+Methodology, Software, Investigation, Verification. Daniel Anglés-
+Alcázar, Francisco Villaescusa-Navarro : Resources, Data Cura-
+tion,Writing-Review&Editing. KartheikIyer,RachelSomerville,
+LauraSommovigo :Conceptualization,Investigation,Writing-Re-
+view & Editing. William J. Roper : Methodology, Software, Writ-
+ing - Review & Editing. Austen Gabrielpillai, Alice E. Matthews :
+Writing - review & editing.
+DATA AVAILABILITY
+The full CAMELS public data repository is available at https:
+//camels.readthedocs.io . This includes the photometric cata-
+logues. Scripts for training and running the inference pipeline are
+made available at https://github.com/christopherlovell/
+camels_observational_catalogues . Download and installa-
+tion instructions for Synthesizer are available at https://
+flaresimulations.github.io/synthesizer/ . Download and
+installation instruction for the LtU-ILI package are provided at
+https://github.com/maho3/ltu-ili/tree/main .
+REFERENCES
+Anglés-AlcázarD.,Faucher-GiguèreC.-A.,KerešD.,HopkinsP.F.,Quataert
+E., Murray N., 2017, MNRAS, 470, 4698
+Appleby S., Davé R., Kraljic K., Anglés-Alcázar D., Narayanan D., 2020,
+MNRAS, 494, 6053
+Bellstedt S., Robotham A. S. G., 2024, ProGeny II: the impact of libraries
+and model configurations on inferred galaxy properties in SED fit-
+ting,doi:10.48550/arXiv.2410.17698, http://arxiv.org/abs/2410.
+17698
+Bernstein R. A., Freedman W. L., Madore B. F., 2002, ApJ, 571, 56
+BirdS.,NiY.,DiMatteoT.,CroftR.,FengY.,ChenN.,2022,MNRAS,512,
+3703
+Borrow J., Anglés-Alcázar D., Davé R., 2020, MNRAS, 491, 6102
+Borrow J., Schaller M., Bower R. G., Schaye J., 2022, MNRAS, 511, 2367
+Bose B., et al., 2021, MNRAS, 508, 2479
+Bravo M., Lagos C. d. P., Robotham A. S. G., Bellstedt S., Obreschkow D.,
+2020, MNRAS, 497, 3026
+Bruzual G., Charlot S., 2003, MNRAS, 344, 1000
+Budavári T., et al., 2005, ApJ, 619, L31
+Bulichi T.-E., Davé R., Kraljic K., 2024, MNRAS, 529, 2595
+Bullock J. S., Boylan-Kolchin M., 2017, ARAA, 55, 343
+Butler Contreras A., Lau E. T., Oppenheimer B. D., Bogd{\’a}n \., Tillman
+M., Nagai D., Kovács O. E., Burkhart B., 2023, MNRAS, 519, 2251
+7https://credit.niso.org/
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 25
+Byler N., Dalcanton J. J., Conroy C., Johnson B. D., 2017, ApJ, 840, 44
+Byrne C. M., Stanway E. R., Eldridge J. J., McSwiney L., Townsend O. T.,
+2022, MNRAS
+Calzetti D., 2001, New Astronomy Reviews, 45, 601
+Camps P., Baes M., 2015, A&C, 9, 20
+Carleo G., Cirac I., Cranmer K., Daudet L., Schuld M., Tishby N., Vogt-
+Maranto L., Zdeborová L., 2019, Rev. Mod. Phys., 91, 045002
+CarrilhoP.,CarrionK.,BoseB.,PourtsidouA.,HidalgoJ.C.,LombriserL.,
+Baldi M., 2022, MNRAS, 512, 3691
+Chabrier G., 2003, PASP, 115, 763
+Charlot S., Fall S. M., 2000, ApJ, 539, 718
+Chatzikos M., et al., 2023, RMAA, 59, 327
+Chawak C., Villaescusa-Navarro F., Echeverri-Rojas N., Ni Y., Hahn C.,
+Anglés-Alcázar D., 2024, ApJ, 969, 105
+Choustikov N., et al., 2024, MNRAS, 532, 2463
+Christensen N., Meyer R., Knox L., Luey B., 2001, Class. Quantum Grav.,
+18, 2677
+Conroy C., 2013, ARAA, 51, 393
+Crain R. A., van de Voort F., 2023, ARAA, 61, 473
+Crain R. A., et al., 2015, MNRAS, 450, 1937
+Cranmer K., Brehmer J., Louppe G., 2020, PNAS, 117, 30055
+Davis M., Efstathiou G., Frenk C. S., White S. D. M., 1985, ApJ, 292, 371
+Davé R., Anglés-Alcázar D., Narayanan D., Li Q., Rafieferantsoa M. H.,
+Appleby S., 2019, MNRAS, 486, 2827
+Delgado A. M., et al., 2023, MNRAS, 526, 5306
+Dickey C. M., et al., 2021, ApJ, 915, 53
+Donnari M., et al., 2019, MNRAS, 485, 4817
+Donnari M., Pillepich A., Nelson D., Marinacci F., Vogelsberger M., Hern-
+quist L., 2021, MNRAS, 506, 4760
+Dopita M. A., Sutherland R. S., 1996, ApJSS, 102, 161
+Draine B. T., 2003, ARAA, 41, 241
+Durkan C., Bekasov A., Murray I., Papamakarios G., 2019, in 33rd Con-
+ference on Neural Information Processing Systems (NeurIPS 2019).
+https://ui.adsabs.harvard.edu/abs/2019arXiv190604032D
+Echeverri-Rojas N., et al., 2023, ApJ, 954, 125
+Eldridge J. J., Stanway E. R., Xiao L., McClelland L. A. S., Taylor G., Ng
+M., Greis S. M. L., Bray J. C., 2017, PASA, 34, e058
+Elliott E. J., Baugh C. M., Lacey C. G., 2021, MNRAS, 506, 4011
+Euclid-Collaboration et al., 2024, arXiv
+Fischera J., Dopita M. A., Sutherland R. S., 2003, ApJ, 599, L21
+Fortuni F., et al., 2023, A&A, 677, A102
+FriedmanR.,HassanS.,2022,inMachineLearningandthePhysicalSciences
+workshop, NeurIPS 2022. https://ui.adsabs.harvard.edu/abs/
+2022arXiv221112724F
+Furlong M., et al., 2015, MNRAS, 450, 4486
+Gabrielpillai A., Somerville R. S., Genel S., Rodriguez-Gomez V., Pandya
+V., Yung L. Y. A., Hernquist L., 2022, MNRAS, 517, 6091
+Gebek A., Trčka A., Baes M., Martorano M., Pillepich A., Kapoor A. U.,
+Nersesian A., van der Wel A., 2024, MNRAS, 531, 3839
+Gebhardt M., et al., 2024, MNRAS, 529, 4896
+Genel S., et al., 2014, MNRAS, 445, 175
+Genel S., et al., 2019, ApJ, 871, 21
+GirardiL.,BressanA.,BertelliG.,ChiosiC.,2000,Astron.Astrophys.Suppl.
+Ser., 141, 371
+GirardiL.,BertelliG.,BressanA.,ChiosiC.,GroenewegenM.a.T.,Marigo
+P., Salasnich B., Weiss A., 2002, A&A, 391, 195
+GreenbergD.,NonnenmacherM.,MackeJ.,2019,inProceedingsofthe36th
+International Conference on Machine Learning. PMLR, pp 2404–2414,
+https://proceedings.mlr.press/v97/greenberg19a.html
+Hadzhiyska B., Bose S., Eisenstein D., Hernquist L., Spergel D. N., 2020,
+MNRAS, 493, 5506
+Hahn O., Abel T., 2011, MNRAS, 415, 2101
+Hahn C., et al., 2022, ApJ, 926, 122
+Hahn C., Villaescusa-Navarro F., Melchior P., Teyssier R., 2024, ApJL, 966,
+L18
+Hassan S., et al., 2022, ApJ, 937, 83
+Hernández-MartínezE.,GenelS.,Villaescusa-NavarroF.,SteinwandelU.P.,
+Lee M. E., Lau E. T., Spergel D. N., 2024, Cosmological and Astro-physical Parameter Inference from Stacked Galaxy Cluster Profiles Us-
+ingCAMELS-zoomGZ,doi:10.48550/arXiv.2410.10942, https://ui.
+adsabs.harvard.edu/abs/2024arXiv241010942H
+Ho M., et al., 2024, OJA, 7, 54
+Hogg D. W., Baldry I. K., Blanton M. R., Eisenstein D. J., 2002, ArXiv
+Astrophysics e-prints, pp arXiv:astro–ph/0210394
+Hopkins P. F., 2015, MNRAS, 450, 53
+Ivezić \., et al., 2019, ApJ, 873, 111
+Iyer K. G., et al., 2020, MNRAS
+Jeffrey N., Alsing J., Lanusse F., 2021, MNRAS, 501, 954
+Jo Y., et al., 2023, ApJ, 944, 67
+Kugel R., et al., 2023, MNRAS, 526, 6103
+Lagos C. d. P., et al., 2019, MNRAS, 489, 4196
+Laughlin G., Bodenheimer P., Adams F. C., 1997, ApJ, 482, 420
+Le-Khac P. H., Healy G., Smeaton A. F., 2020, IEEE Access
+Leclercq F., Heavens A., 2021, MNRAS: Letters, 506, L85
+Lee J. C., et al., 2009, ApJ, 706, 599
+LemosP.,CranmerM.,AbidiM.,HahnC.,EickenbergM.,MassaraE.,Yallup
+D., Ho S., 2023, ML: ST, 4, 01LT01
+Li A., Liang S. L., Kann D. A., Wei D. M., Klose S., Wang Y. J., 2008, ApJ,
+685, 1046
+Li Q., Narayanan D., Davé R., 2019, MNRAS, 490, 1425
+Liske J., et al., 2015, MNRAS, 452, 2087
+Loveday J., et al., 2012, MNRAS, 420, 1239
+Lovell C. C., Acquaviva V., Thomas P. A., Iyer K. G., Gawiser E., Wilkins
+S. M., 2019, MNRAS, 490, 5503
+Lovell C. C., et al., 2023, ICML 2023 ML4Astrophysics
+Madau P., Dickinson M., 2014, ARAA, 52, 415
+MarinJ.-M.,PudloP.,RobertC.P.,RyderR.J.,2012,StatComput,22,1167
+McClintock T., et al., 2019, ApJ, 872, 53
+Mead A. J., Brieden S., Tröster T., Heymans C., 2021, MNRAS, 502, 1401
+Narayanan D., Conroy C., Dave R., Johnson B., Popping G., 2018, preprint,
+1805, arXiv:1805.06905
+Narayanan D., et al., 2021, ApJS, 252, 12
+Nelson D., et al., 2018, MNRAS, 475, 624
+Ni Y., et al., 2022, MNRAS, 513, 670
+Ni Y., et al., 2023, arXiv.2304.02096
+Nicola A., et al., 2022, JCAP, 2022, 046
+Pallottini A., et al., 2022, MNRAS, 513, 5621
+Pandya V., et al., 2017, MNRAS, 472, 2054
+Papamakarios G., Murray I., 2016, in Advances in Neural In-
+formation Processing Systems. Curran Associates, Inc.,
+https://proceedings.neurips.cc/paper/2016/hash/
+6aca97005c68f1206823815f66102863-Abstract.html
+Pei Y. C., 1992, ApJ, 395, 130
+PerezL.A.,GenelS.,Villaescusa-NavarroF.,SomervilleR.S.,Gabrielpillai
+A., Anglés-Alcázar D., Wandelt B. D., Yung L. Y. A., 2023, ApJ, 954,
+11
+Pillepich A., et al., 2018, MNRAS, 473, 4077
+Rodrigo C., Solano E., 2020, The SVO Filter Profile Service. https://ui.
+adsabs.harvard.edu/abs/2020sea..confE.182R
+Rodrigo C., Solano E., Bayo A., 2012, Technical report, SVO Filter Pro-
+file Service Version 1.0, https://ui.adsabs.harvard.edu/abs/
+2012ivoa.rept.1015R , doi:10.5479/ADS/bib/2012ivoa.rept.1015R. ,
+https://ui.adsabs.harvard.edu/abs/2012ivoa.rept.1015R
+Rodríguez Montero F., Davé R., Wild V., Anglés-Alcázar D., Narayanan D.,
+2019, MNRAS, 490, 2139
+Roncoli A., Ćiprĳanović A., Voetberg M., Villaescusa-Navarro F., Nord B.,
+2023, Machine Learning and the Physical Sciences Workshop, NeurIPS
+2023
+Salim S., Narayanan D., 2020, ARAA, 58, 529
+Schaller M., Schaye J., Kugel R., Broxterman J. C., Daalen M. P. v.,
+2024a, The FLAMINGO project: Baryon effects on the matter power
+spectrum, doi:10.48550/arXiv.2410.17109, http://arxiv.org/abs/
+2410.17109
+Schaller M., et al., 2024b, MNRAS, 530, 2378
+Schaye J., et al., 2015, MNRAS, 446, 521
+Shao H., et al., 2022, Robust field-level inference with dark matter ha-
+MNRAS 000, 1–27 (2024)26 C. C. Lovell et al.
+los, doi:10.48550/arXiv.2209.06843, http://arxiv.org/abs/2209.
+06843
+Smith M. J., Geach J. E., 2023, RSOS, 10, 221454
+Somerville R. S., Davé R., 2015, ARAA, 53, 51
+Springel V., 2010, MNRAS, 401, 791
+SpringelV.,WhiteS.D.M.,TormenG.,KauffmannG.,2001,MNRAS,328,
+726
+Stanway E. R., Eldridge J. J., 2018, MNRAS, 479, 75
+Stanway E. R., Eldridge J. J., Becker G. D., 2016, MNRAS, 456, 485
+Steinacker J., Baes M., Gordon K. D., 2013, ARAA, 51, 63
+Talts S., Betancourt M., Simpson D., Vehtari A., Gelman A., 2018, arXiv
+Tessore N., Loureiro A., Joachimi B., von Wietersheim-Kramsta M., Jeffrey
+N., 2023, OJA, 6, 11
+Thiele L., et al., 2022, Phys. Rev. D, 105, 083505
+Tillman M. T., et al., 2023, AJ, 166, 228
+Tortorelli L., McCullough J., Gruen D., 2024, The impact of stellar popula-
+tion synthesis choices on forward-modelling-based redshift distribution
+estimates, doi:10.48550/arXiv.2405.06009, http://arxiv.org/abs/
+2405.06009
+Trayford J. W., et al., 2015, MNRAS, 452, 2879
+Trayford J. W., et al., 2017, MNRAS, 470, 771
+Trayford J. W., Lagos C. d. P., Robotham A. S. G., Obreschkow D., 2020,
+MNRAS, 491, 3937
+Trčka A., et al., 2022, MNRAS, 516, 3728
+Vĳayan A. P., Lovell C. C., Wilkins S. M., Thomas P. A., Barnes D. J.,
+Irodotou D., Kuusisto J., Roper W. J., 2021, MNRAS, 501, 3289
+Villaescusa-Navarro F., et al., 2020, ApJS, 250, 2
+Villaescusa-Navarro F., et al., 2021a, arXiv:2109.09747
+Villaescusa-Navarro F., et al., 2021b, ApJ, 915, 71
+Villaescusa-Navarro F., et al., 2022, ApJ, 929, 132
+Villaescusa-Navarro F., et al., 2023, ApJSS, 265, 54
+Villanueva-Domingo P., Villaescusa-Navarro F., 2022, ApJ, 937, 115
+VogelsbergerM.,MarinacciF.,TorreyP.,PuchweinE.,2020,NatureReviews
+Physics, 2, 42
+Weinberger R., et al., 2018, MNRAS, 479, 4056
+Weinberger R., Springel V., Pakmor R., 2019, arXiv e-prints, 1909,
+arXiv:1909.04667
+Wilkins S. M., Feng Y., Di-Matteo T., Croft R., Stanway E. R., Bunker A.,
+Waters D., Lovell C., 2016, MNRAS, 460, 3170
+Wilkins S. M., et al., 2020, MNRAS, 493, 6079
+Willmer C. N. A., 2018, ApJS, 236, 47
+Zheng Y., Dave R., Wild V., Montero F. R., 2022, MNRAS, 513, 27
+de Santi N. S. M., et al., 2023a, Field-level simulation-based infer-
+ence with galaxy catalogs: the impact of systematic effects,
+doi:10.48550/arXiv.2310.15234, http://arxiv.org/abs/2310.
+15234
+de Santi N. S. M., et al., 2023b, ApJ, 952, 69
+von Wietersheim-Kramsta M., Lin K., Tessore N., Joachimi B., Loureiro A.,
+ReischkeR.,WrightA.H.,2024,KiDS-SBI:Simulation-BasedInference
+Analysis of KiDS-1000 Cosmic Shear, doi:10.48550/arXiv.2404.15402,
+https://ui.adsabs.harvard.edu/abs/2024arXiv240415402V
+Ćiprĳanović A., Kafkes D., Jenkins S., Downey K., Perdue G. N.,
+Madireddy S., Johnston T., Nord B., 2020, in Workshop at
+the 34th Conference on Neural Information Processing Systems
+(NeurIPS). , doi:10.48550/arXiv.2011.03591, https://ui.adsabs.
+harvard.edu/abs/2020arXiv201103591C
+Ćiprĳanović A., Lewis A., Pedro K., Madireddy S., Nord B., Perdue G. N.,
+Wild S. M., 2022, in Workshop at the 36th conference on Neural Infor-
+mationProcessingSystems(NeurIPS).,doi:10.48550/arXiv.2211.00677,
+https://ui.adsabs.harvard.edu/abs/2022arXiv221100677C
+APPENDIX A: PHOTOMETRY DATABASE
+The photometric catalogues produced in this work are avail-
+able at https://camels.readthedocs.io/en/latest/data_
+access.html .WeprovideABrest-andobserver-framemagnitudes
+Figure1. TARPcoverageforthefiducialIllustris-TNGmodel,includingdust
+attenuated luminosity functions and colours, at 𝑧=0.1.
+Figure 2. Combined marginal posterior distribution of Ωm,𝜎8,𝐴SN1and
+𝐴SN2from all test set objects in the Illustris-TNG suite for the intrinsic
+(orange) and dust attenuated (blue) LFs and colours.
+infiltersfromtheGALEX( 𝐹𝑈𝑉and𝑁𝑈𝑉),GAMA(𝑢𝑔𝑟𝑖𝑧𝑌𝐽𝐻𝐾 ),
+Johnson (𝑈𝐵𝑉𝐽), HST ACS (F435W, F606W, F775W, F814W, and
+F850LP), HST WFC3 (F098M, F105W, F110W, F125W, F140W
+andF160W),andJWSTNIRCam(F070W,F090W,F115W,F150W,
+F200W, F277W, F356W and F444W) instruments. These are pro-
+vided for both the BPASS and BC03 SPS models, and for intrinsic
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 27
+and dust attenuated emission. Full details on the forward modelling
+pipeline are provided in Section 3.
+APPENDIX B: COVERAGE TESTS AND CALIBRATION
+We carried out a number of tests of the model coverage for each
+of our trained SBI models, in order to calibrate our model (Talts
+et al. 2018). In each case we used the 10% of reserved simulation
+in the test set. We produced and considered P-P plots, to compare
+the CDF of the probability integral transform to that of a uniform
+random variable, as well as the posterior predictions directly, to
+assesstheaccuracyandprecisionofeachmarginalposterior.Wealso
+used approximate methods to test our posterior coverage, including
+the Tests of Accuracy with Random Points (Lemos et al. 2023).
+TARPevaluatesdistancesbetweensamplesoftheposterior,thetrue
+value, and a random point, and uses these to estimate the expected
+coverage probability; this approach has been shown to provide a
+robust test of the optimality of the posterior estimator. An example
+for the Illustris-TNG model (including LFs and colours) is shown in
+Figure 1, showing excellent coverage and little to no bias. Similar
+results are achieved across all of our trained models.
+APPENDIX C: CONSTRAINTS FROM THE INTRINSIC
+EMISSION
+The dust model described in Section 3.2 does not depend on galaxy
+properties explicitly. However, it does attenuate young stars (< 10
+Myr) more than old stars, and as such it depends on the shape of
+the star formation history of each galaxy around this pivot point.
+Galaxieswithyoungerstarformationhistorieswillexperiencemore
+attenuation;thismaythenacteitherasadegeneracywiththeunderly-
+ingcosmologicalandastrophysicalparameters,orprovideadditional
+information.Totestthis,wepresentinFigure2thestackedmarginal
+posterior distributions using attenuated or intrinsic LFs and colours
+inthe Illustris-TNG model.Forthecosmologicalparametersthere
+is no difference in the RMSE, however for the supernovae feedback
+parameters the constraints are slightly tighter in the model using
+attenuated emission compared to the intrinsic emission. This effect,
+whilesmall,suggeststhatthedifferentialattenuationofoldandyoung
+stars imprints additional information from the feedback parameters
+on the emission, from which the model can learn.
+APPENDIX D: FEATURE IMPORTANCE ACROSS
+ADDITIONAL MODELS
+Figures B1, D1 and D2 show the stacked binned residuals of the
+marginal posteriors for the cosmological and supernovae feedback
+parameters in the Simba,Swift-EAGLE andAstridsimulations.
+Similarly to the trends seen in Figure 15 for Illustris-TNG , we
+find that for all simulations it is the colours that provide the most
+informationon Ωm.Wealsoseethattheinformationat 𝑧=2ismost
+informative for constraints on 𝜎8, as compared to lower redshift
+luminosity functions and colours.
+This paper has been typeset from a T EX/LATEX file prepared by the author.
+MNRAS 000, 1–27 (2024)28 C. C. Lovell et al.
+Figure B1. The same as Figure 15, but showing the combined posteriors for the Simbasimulations.
+Figure D1. The same as Figures 15 and B1, but showing the combined posteriors for the Swift-EAGLE simulations.
+MNRAS 000, 1–27 (2024)LtU: Parameter inference on photometry 29
+Figure D2. The same as Figures 15 and B1, but showing the combined posteriors for the Astridsimulations.
+MNRAS 000, 1–27 (2024)
